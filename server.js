@@ -1,11 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
-const dotenv = require("dotenv");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const connectDB = require("./config/db");
 const { connectNeo4j } = require("./config/neo4j");
 
-dotenv.config();
 connectDB();
 connectNeo4j();
 

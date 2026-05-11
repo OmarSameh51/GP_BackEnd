@@ -4,9 +4,9 @@ const driver = neo4j.driver(
   process.env.NEO4J_URI || "bolt://127.0.0.1:7687",
   neo4j.auth.basic(
     process.env.NEO4J_USER || "neo4j",
-    process.env.NEO4J_PASSWORD || "password"
+    process.env.NEO4J_PASSWORD || "password",
   ),
-  { encrypted: "ENCRYPTION_OFF" }
+  { encrypted: false },
 );
 
 const connectNeo4j = async () => {

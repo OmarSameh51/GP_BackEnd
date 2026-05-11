@@ -4,7 +4,7 @@ const { getCourseFromNeo4j } = require("../services/courseService");
 
 const convertGradeToGPA = require("../utils/gradeConverter");
 
-exports.addCourse = async (req, res) => {
+const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -75,4 +75,4 @@ const getProfile = (req, res) => {
   });
 };
 
-module.exports = { getProfile };
+module.exports = { getProfile, addCourse };
