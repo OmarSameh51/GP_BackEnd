@@ -4,9 +4,8 @@ const courseSchema = new mongoose.Schema({
   courseCode: String,
   courseName: String,
   creditHours: Number,
-  grade: String,
-  gradePoints: Number,
-  semester: String,
+  grade: Number, // max 100
+  gradePoints: Number, // GPA Points 4
 });
 
 const aiPlanSchema = new mongoose.Schema(
@@ -86,4 +85,4 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

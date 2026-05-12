@@ -5,12 +5,19 @@ const { getCourseFromNeo4j } = require("../services/courseService");
 const convertGradeToGPA = require("../utils/gradeConverter");
 
 const addCourse = async (req, res) => {
+  console.log("ADD COURSE HIT");
+
   try {
     const userId = req.user.id;
 
     let { courseCode, grade } = req.body;
-
+    grade = Number(grade);
     // validation
+    if (isNaN(grade) || grade < 0 || grade > 100) {
+      return res.status(400).json({
+        msg: "Grade must be a number between 0 and 100",
+      });
+    }
     if (!courseCode || grade === undefined) {
       return res.status(400).json({
         msg: "Course code and grade are required",
@@ -67,7 +74,8 @@ const addCourse = async (req, res) => {
       grade,
       gradePoints,
     };
-
+    console.log(typeof grade);
+    console.log(newCourse);
     // add course
     user.enrolledCourses.push(newCourse);
 
