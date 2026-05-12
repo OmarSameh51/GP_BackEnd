@@ -5,8 +5,6 @@ const { getCourseFromNeo4j } = require("../services/courseService");
 const convertGradeToGPA = require("../utils/gradeConverter");
 
 const addCourse = async (req, res) => {
-  console.log("ADD COURSE HIT");
-
   try {
     const userId = req.user.id;
 
@@ -74,8 +72,6 @@ const addCourse = async (req, res) => {
       grade,
       gradePoints,
     };
-    console.log(typeof grade);
-    console.log(newCourse);
     // add course
     user.enrolledCourses.push(newCourse);
 
