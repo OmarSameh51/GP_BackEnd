@@ -10,7 +10,14 @@ const addCourse = async (req, res) => {
 
     let { courseCode, grade } = req.body;
 
-    // make course code uppercase
+    // validation
+    if (!courseCode || grade === undefined) {
+      return res.status(400).json({
+        msg: "Course code and grade are required",
+      });
+    }
+
+    // uppercase course code
     courseCode = courseCode.trim().toUpperCase();
 
     // get course from Neo4j
@@ -22,20 +29,44 @@ const addCourse = async (req, res) => {
       });
     }
 
+    // get user
+    const user = await User.findById(userId);
+
+    // get all attempts for this course
+    const existingCourses = user.enrolledCourses.filter(
+      (c) => c.courseCode === courseCode,
+    );
+
+    // check if already passed
+    const hasPassed = existingCourses.some((c) => c.grade >= 60);
+
+    if (hasPassed) {
+      return res.status(400).json({
+        msg: "You already passed this course",
+      });
+    }
+
+    // check if already failed once
+    const failedAttempt = existingCourses.find((c) => c.grade < 60);
+
+    // if already failed and trying another F
+    if (failedAttempt && grade < 50) {
+      return res.status(400).json({
+        msg: "You already failed this course once. Retake must be a passing grade",
+      });
+    }
+
     // convert grade to GPA
     const gradePoints = convertGradeToGPA(grade);
 
     // build course object
     const newCourse = {
-      courseCode: course.code,
+      courseCode: course.Code,
       courseName: course.name,
-      creditHours: course.creditHours,
+      creditHours: Number(course.Credits),
       grade,
       gradePoints,
     };
-
-    // get user
-    const user = await User.findById(userId);
 
     // add course
     user.enrolledCourses.push(newCourse);
