@@ -4,6 +4,8 @@ const { getCourseFromNeo4j } = require("../services/courseService");
 
 const convertGradeToGPA = require("../utils/gradeConverter");
 
+const calculateGPA = require("../utils/calculateGPA");
+
 const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -74,7 +76,11 @@ const addCourse = async (req, res) => {
     };
     // add course
     user.enrolledCourses.push(newCourse);
+    // recalculate GPA and credit hours
+    const result = calculateGPA(user.enrolledCourses);
 
+    user.gpa = result.gpa;
+    user.totalCreditHours = result.totalCreditHours;
     await user.save();
 
     res.json({

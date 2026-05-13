@@ -7,7 +7,7 @@ const convertGradeToGPA = (grade) => {
   if (grade >= 65) return 2.5;
   if (grade >= 60) return 2.25;
   if (grade >= 50) return 2;
-  return;
+  return 0;
 };
 
 module.exports = convertGradeToGPA;
