@@ -115,5 +115,76 @@ const getProfile = (req, res) => {
     updatedAt: user.updatedAt,
   });
 };
+const editCourse = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { courseId } = req.params;
+    let grade = req.body?.grade;
 
-module.exports = { getProfile, addCourse };
+    // validation
+    if (grade === undefined) {
+      return res.status(400).json({
+        msg: "Grade is required",
+      });
+    }
+
+    grade = Number(grade);
+
+    if (isNaN(grade) || grade < 0 || grade > 100) {
+      return res.status(400).json({
+        msg: "Grade must be between 0 and 100",
+      });
+    }
+
+    // get user
+    const user = await User.findById(userId);
+
+    // get target course
+    const course = user.enrolledCourses.id(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        msg: "Course not found",
+      });
+    }
+
+    // get same course attempts except current one
+    const sameCourses = user.enrolledCourses.filter(
+      (c) =>
+        c.courseCode === course.courseCode && c._id.toString() !== courseId,
+    );
+
+    // other failed attempts
+    const otherFailedAttempts = sameCourses.filter((c) => c.grade < 50);
+
+    // prevent 2 F attempts
+    if (grade < 50 && otherFailedAttempts.length > 0) {
+      return res.status(400).json({
+        msg: "Only one failed attempt is allowed for this course",
+      });
+    }
+
+    // update course
+    course.grade = grade;
+    course.gradePoints = convertGradeToGPA(grade);
+
+    // recalculate GPA
+    const result = calculateGPA(user.enrolledCourses);
+
+    user.gpa = result.gpa;
+    user.totalCreditHours = result.totalCreditHours;
+
+    await user.save();
+
+    res.json({
+      msg: "Course updated successfully",
+      course,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
+module.exports = { getProfile, addCourse, editCourse };

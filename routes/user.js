@@ -2,10 +2,14 @@ const express = require("express");
 const router = express.Router();
 
 const protect = require("../middleware/authMiddleware");
-const { getProfile, addCourse } = require("../controllers/userController");
+const {
+  getProfile,
+  addCourse,
+  editCourse,
+} = require("../controllers/userController");
 
 router.post("/course", protect, addCourse);
-
+router.put("/course/:courseId", protect, editCourse);
 /**
  * @swagger
  * /user/profile:
