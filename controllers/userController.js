@@ -187,4 +187,42 @@ const editCourse = async (req, res) => {
     });
   }
 };
-module.exports = { getProfile, addCourse, editCourse };
+const deleteCourse = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { courseId } = req.params;
+
+    // get user
+    const user = await User.findById(userId);
+
+    // find course
+    const course = user.enrolledCourses.id(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        msg: "Course not found",
+      });
+    }
+
+    // remove course
+    course.deleteOne();
+
+    // recalculate GPA
+    const result = calculateGPA(user.enrolledCourses);
+
+    user.gpa = result.gpa;
+    user.totalCreditHours = result.totalCreditHours;
+
+    await user.save();
+
+    res.json({
+      msg: "Course deleted successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
+module.exports = { getProfile, addCourse, editCourse, deleteCourse };

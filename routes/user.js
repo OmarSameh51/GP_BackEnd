@@ -6,10 +6,12 @@ const {
   getProfile,
   addCourse,
   editCourse,
+  deleteCourse,
 } = require("../controllers/userController");
 
 router.post("/course", protect, addCourse);
 router.put("/course/:courseId", protect, editCourse);
+router.delete("/course/:courseId", protect, deleteCourse);
 /**
  * @swagger
  * /user/profile:
