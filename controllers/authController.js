@@ -40,6 +40,7 @@ exports.register = async (req, res) => {
       academicYear,
       department,
       phoneNumber,
+      role: "student",
     });
 
     await user.save();

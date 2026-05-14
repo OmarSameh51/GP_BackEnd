@@ -61,6 +61,11 @@ const userSchema = new mongoose.Schema(
 
     academicYear: Number,
     department: String,
+    role: {
+      type: String,
+      enum: ["student", "admin", "super_admin"],
+      default: "student",
+    },
     gpa: Number,
 
     enrolledCourses: [courseSchema],

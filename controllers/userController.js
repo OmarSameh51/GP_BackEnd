@@ -104,6 +104,7 @@ const getProfile = (req, res) => {
     lastName: user.lastName,
     username: user.username,
     email: user.email,
+    role: user.role,
     academicYear: user.academicYear,
     department: user.department,
     gpa: user.gpa,
