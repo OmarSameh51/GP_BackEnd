@@ -9,9 +9,136 @@ const {
   deleteCourse,
   updatePreferredDepartment,
 } = require("../controllers/userController");
-
+/**
+ * @swagger
+ * /user/course:
+ *   post:
+ *     summary: Add a course to authenticated student
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - courseCode
+ *               - grade
+ *             properties:
+ *               courseCode:
+ *                 type: string
+ *                 example: "CS111"
+ *               grade:
+ *                 type: number
+ *                 example: 85
+ *     responses:
+ *       200:
+ *         description: Course added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "Course added successfully"
+ *                 course:
+ *                   type: object
+ *                   properties:
+ *                     courseCode:
+ *                       type: string
+ *                       example: "CS111"
+ *                     courseName:
+ *                       type: string
+ *                       example: "Introduction to Computer Science"
+ *                     creditHours:
+ *                       type: number
+ *                       example: 3
+ *                     grade:
+ *                       type: number
+ *                       example: 85
+ *                     gradePoints:
+ *                       type: number
+ *                       example: 3.75
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Course not found
+ */
 router.post("/course", protect, addCourse);
+/**
+ * @swagger
+ * /user/course/{courseId}:
+ *   put:
+ *     summary: Edit a student's course grade
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "6a04215d8ccbb846ffe27aa1"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - grade
+ *             properties:
+ *               grade:
+ *                 type: number
+ *                 example: 75
+ *     responses:
+ *       200:
+ *         description: Course updated successfully
+ *       400:
+ *         description: Invalid grade
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized
+ */
 router.put("/course/:courseId", protect, editCourse);
+/**
+ * @swagger
+ * /user/course/{courseId}:
+ *   delete:
+ *     summary: Delete a student's course
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "6a04215d8ccbb846ffe27aa1"
+ *     responses:
+ *       200:
+ *         description: Course deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: "Course deleted successfully"
+ *       404:
+ *         description: Course not found
+ *       401:
+ *         description: Unauthorized
+ */
 router.delete("/course/:courseId", protect, deleteCourse);
 router.put("/preferred-department", protect, updatePreferredDepartment);
 /**
