@@ -140,6 +140,86 @@ router.put("/course/:courseId", protect, editCourse);
  *         description: Unauthorized
  */
 router.delete("/course/:courseId", protect, deleteCourse);
+/**
+ * @swagger
+ * /user/preferred-department:
+ *   put:
+ *     summary: Update student's preferred department
+ *     description: Allows authenticated students to update their preferred department. Only students can perform this action.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - preferredDepartment
+ *             properties:
+ *               preferredDepartment:
+ *                 type: string
+ *                 enum: [AI, CS, IT, IS]
+ *                 example: CS
+ *     responses:
+ *       200:
+ *         description: Preferred department updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Preferred department updated successfully
+ *                 preferredDepartment:
+ *                   type: string
+ *                   enum: [AI, CS, IT, IS]
+ *                   example: CS
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               missingField:
+ *                 summary: Missing preferred department
+ *                 value:
+ *                   msg: Preferred department is required
+ *               invalidValue:
+ *                 summary: Invalid department value
+ *                 value:
+ *                   msg: Invalid preferred department
+ *       403:
+ *         description: Forbidden – user is not a student
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Only students can set preferred department
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Server error
+ *                 error:
+ *                   type: string
+ *                   example: Some unexpected error occurred
+ */
 router.put("/preferred-department", protect, updatePreferredDepartment);
 /**
  * @swagger
