@@ -7,11 +7,13 @@ const {
   addCourse,
   editCourse,
   deleteCourse,
+  updatePreferredDepartment,
 } = require("../controllers/userController");
 
 router.post("/course", protect, addCourse);
 router.put("/course/:courseId", protect, editCourse);
 router.delete("/course/:courseId", protect, deleteCourse);
+router.put("/preferred-department", protect, updatePreferredDepartment);
 /**
  * @swagger
  * /user/profile:

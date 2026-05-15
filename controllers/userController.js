@@ -107,6 +107,7 @@ const getProfile = (req, res) => {
     role: user.role,
     academicYear: user.academicYear,
     department: user.department,
+    preferredDepartment: user.preferredDepartment,
     gpa: user.gpa,
     totalCreditHours: user.totalCreditHours,
     enrolledCourses: user.enrolledCourses,
@@ -226,4 +227,56 @@ const deleteCourse = async (req, res) => {
     });
   }
 };
-module.exports = { getProfile, addCourse, editCourse, deleteCourse };
+const updatePreferredDepartment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { preferredDepartment } = req.body;
+
+    const allowedDepartments = ["AI", "CS", "IT", "IS"];
+
+    // validation
+    if (!preferredDepartment) {
+      return res.status(400).json({
+        msg: "Preferred department is required",
+      });
+    }
+
+    if (!allowedDepartments.includes(preferredDepartment)) {
+      return res.status(400).json({
+        msg: "Invalid preferred department",
+      });
+    }
+
+    // get user
+    const user = await User.findById(userId);
+
+    // student only
+    if (user.role !== "student") {
+      return res.status(403).json({
+        msg: "Only students can set preferred department",
+      });
+    }
+
+    // update
+    user.preferredDepartment = preferredDepartment;
+
+    await user.save();
+
+    res.json({
+      msg: "Preferred department updated successfully",
+      preferredDepartment: user.preferredDepartment,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
+module.exports = {
+  getProfile,
+  addCourse,
+  editCourse,
+  deleteCourse,
+  updatePreferredDepartment,
+};

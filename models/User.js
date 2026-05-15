@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema(
     studentId: {
       type: String,
       unique: true,
+      sparse: true,
+      required: function () {
+        return this.role === "student";
+      },
     },
 
     firstName: {
@@ -59,20 +63,58 @@ const userSchema = new mongoose.Schema(
       ],
     },
 
-    academicYear: Number,
-    department: String,
     role: {
       type: String,
       enum: ["student", "admin", "super_admin"],
       default: "student",
     },
-    gpa: Number,
 
-    enrolledCourses: [courseSchema],
+    academicYear: {
+      type: Number,
+      required: function () {
+        return this.role === "student";
+      },
+    },
+
+    department: {
+      type: String,
+      required: function () {
+        return this.role === "student";
+      },
+    },
+    preferredDepartment: {
+      type: String,
+      enum: [
+        "AI",
+        "Cyber Security",
+        "Software Engineering",
+        "Data Science",
+        "Information Systems",
+        "General",
+      ],
+      default: function () {
+        return this.role === "student" ? "General" : undefined;
+      },
+    },
+    gpa: {
+      type: Number,
+      default: function () {
+        return this.role === "student" ? 0 : undefined;
+      },
+    },
+
+    enrolledCourses: {
+      type: [courseSchema],
+      default: function () {
+        return this.role === "student" ? [] : undefined;
+      },
+    },
 
     totalCreditHours: {
       type: Number,
-      default: 0,
+      default: function () {
+        return this.role === "student" ? 0 : undefined;
+      },
     },
 
     password: {
@@ -81,7 +123,12 @@ const userSchema = new mongoose.Schema(
       minlength: [6, "Password must be at least 6 characters"],
     },
 
-    AI_plan: aiPlanSchema,
+    AI_plan: {
+      type: aiPlanSchema,
+      default: function () {
+        return this.role === "student" ? {} : undefined;
+      },
+    },
 
     phoneNumber: String,
   },
