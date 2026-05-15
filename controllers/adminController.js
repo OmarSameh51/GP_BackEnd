@@ -47,7 +47,24 @@ const createAdmin = async (req, res) => {
     });
   }
 };
+const getAllStudents = async (req, res) => {
+  try {
+    const students = await User.find({
+      role: "student",
+    }).select("-password");
 
+    res.json({
+      count: students.length,
+      students,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
 module.exports = {
   createAdmin,
+  getAllStudents,
 };
