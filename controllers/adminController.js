@@ -20,7 +20,6 @@ const getAllStudents = async (req, res) => {
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
-
     const student = await User.findOne({
       studentId,
       role: "student",
