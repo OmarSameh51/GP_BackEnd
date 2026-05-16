@@ -11,7 +11,6 @@ const connectNeo4j = async () => {
     console.log("Neo4j connected");
   } catch (err) {
     console.error("Neo4j connection failed:", err.message);
-    process.exit(1);
   }
 };
 
