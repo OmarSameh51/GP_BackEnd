@@ -1,3 +1,4 @@
+const User = require("../models/User");
 const getAllStudents = async (req, res) => {
   try {
     const students = await User.find({
@@ -15,6 +16,7 @@ const getAllStudents = async (req, res) => {
     });
   }
 };
+
 const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;

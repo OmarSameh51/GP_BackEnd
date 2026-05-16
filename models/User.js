@@ -85,14 +85,7 @@ const userSchema = new mongoose.Schema(
     },
     preferredDepartment: {
       type: String,
-      enum: [
-        "AI",
-        "Cyber Security",
-        "Software Engineering",
-        "Data Science",
-        "Information Systems",
-        "General",
-      ],
+      enum: ["AI", "CS", "IT", "IS", "General"],
       default: function () {
         return this.role === "student" ? "General" : undefined;
       },

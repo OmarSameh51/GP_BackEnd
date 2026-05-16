@@ -5,7 +5,6 @@ const protect = require("../middleware/authMiddleware");
 const adminOnly = require("../middleware/adminMiddleware");
 
 const {
-  createAdmin,
   getAllStudents,
   getStudentById,
   deleteStudent,
@@ -35,7 +34,7 @@ const superAdminOnly = require("../middleware/superAdminMiddleware");
 router.get("/students", protect, adminOnly, getAllStudents);
 /**
  * @swagger
- * /admin/student/{id}:
+ * /admin/student/{studentId}:
  *   get:
  *     summary: Get student by ID
  *     description: Allows admin and super admin to retrieve a student's details by ID.
@@ -65,7 +64,7 @@ router.get("/students", protect, adminOnly, getAllStudents);
 router.get("/student/:studentId", protect, adminOnly, getStudentById);
 /**
  * @swagger
- * /admin/student/{id}:
+ * /admin/student/{studentId}:
  *   delete:
  *     summary: Delete student by ID
  *     description: Allows admin and super admin to delete a student account.

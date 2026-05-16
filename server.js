@@ -5,7 +5,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const connectDB = require("./config/db");
 const { connectNeo4j } = require("./config/neo4j");
-
+const adminRoutes = require("./routes/admin");
 connectDB();
 connectNeo4j();
 
@@ -43,7 +43,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/user", require("./routes/user"));
-app.use("/api/admin", require("./routes/admin"));
+app.use("/api/admin", adminRoutes);
 app.use("/api/super-admin", require("./routes/superAdmin"));
 app.get("/", (req, res) => {
   res.send("API is running");
