@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const swaggerUiDist = require("swagger-ui-dist"); // ← add this
 const connectDB = require("./config/db");
 const { connectNeo4j } = require("./config/neo4j");
 const adminRoutes = require("./routes/admin");
@@ -38,6 +39,7 @@ const swaggerOptions = {
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
+app.use("/api/docs", express.static(swaggerUiDist.getAbsoluteFSPath())); // ← add this
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Routes
