@@ -64,3 +64,4 @@ debug.log
 
 # Docker (optional)
 docker-compose.override.yml
+.vercel
