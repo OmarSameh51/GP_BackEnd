@@ -8,6 +8,7 @@ const {
   getAllStudents,
   getStudentById,
   deleteStudent,
+  updateCourseProperties,
 } = require("../controllers/adminController");
 const superAdminOnly = require("../middleware/superAdminMiddleware");
 
@@ -92,4 +93,59 @@ router.get("/student/:studentId", protect, adminOnly, getStudentById);
  *         description: Server error
  */
 router.delete("/student/:studentId", protect, adminOnly, deleteStudent);
+/**
+ * @swagger
+ * /admin/course/{courseCode}:
+ *   patch:
+ *     summary: Update course properties
+ *     description: Allows admin to update one or more properties of a course. At least one field must be provided.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS112"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             minProperties: 1
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *               Required_level:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *                 example: 2
+ *               Required_Hours:
+ *                 type: number
+ *                 minimum: 0
+ *                 example: 120
+ *               Semester:
+ *                 type: integer
+ *                 enum: [1, 2]
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Course updated successfully
+ *       400:
+ *         description: Validation error or no fields provided
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/course/:courseCode", protect, adminOnly, updateCourseProperties);
 module.exports = router;
