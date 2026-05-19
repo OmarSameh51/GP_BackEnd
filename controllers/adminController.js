@@ -95,31 +95,40 @@ const updateCourseProperties = async (req, res) => {
       });
     }
 
-    if (
-      Required_level !== undefined &&
-      (!Number.isInteger(Number(Required_level)) ||
-        ![1, 2, 3, 4].includes(Number(Required_level)))
-    ) {
-      return res.status(400).json({
-        msg: "Required_level must be between 1 and 4",
-      });
+    if (Required_level !== undefined) {
+      if (
+        typeof Required_level !== "number" ||
+        !Number.isInteger(Required_level) ||
+        ![1, 2, 3, 4].includes(Required_level)
+      ) {
+        return res.status(400).json({
+          msg: "Required_level must be an integer between 1 and 4",
+        });
+      }
+    }
+    if (Required_Hours !== undefined) {
+      if (
+        typeof Required_Hours !== "number" ||
+        !Number.isInteger(Required_Hours) ||
+        Required_Hours < 0
+      ) {
+        return res.status(400).json({
+          msg: "Required_Hours must be a positive integer",
+        });
+      }
     }
 
-    if (
-      Required_Hours !== undefined &&
-      (isNaN(Number(Required_Hours)) || Number(Required_Hours) < 0)
-    ) {
-      return res.status(400).json({
-        msg: "Required_Hours must be a valid number",
-      });
+    if (Semester !== undefined) {
+      if (
+        typeof Semester !== "number" ||
+        !Number.isInteger(Semester) ||
+        ![1, 2].includes(Semester)
+      ) {
+        return res.status(400).json({
+          msg: "Semester must be 1 or 2",
+        });
+      }
     }
-
-    if (Semester !== undefined && ![1, 2].includes(Number(Semester))) {
-      return res.status(400).json({
-        msg: "Semester must be 1 or 2",
-      });
-    }
-
     // check if course exists
     const existingCourse = await session.run(
       `
@@ -146,17 +155,17 @@ const updateCourseProperties = async (req, res) => {
 
     if (Required_Hours !== undefined) {
       updates.push("c.Required_Hours = $Required_Hours");
-      params.Required_Hours = Number(Required_Hours);
+      params.Required_Hours = Required_Hours;
     }
 
     if (Required_level !== undefined) {
       updates.push("c.Required_level = $Required_level");
-      params.Required_level = Number(Required_level);
+      params.Required_level = Required_level;
     }
 
     if (Semester !== undefined) {
       updates.push("c.Semester = $Semester");
-      params.Semester = Number(Semester);
+      params.Semester = Semester;
     }
 
     if (updates.length === 0) {
