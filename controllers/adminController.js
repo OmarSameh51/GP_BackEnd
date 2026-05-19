@@ -1,5 +1,15 @@
 const User = require("../models/User");
 const { driver } = require("../config/neo4j");
+const neo4j = require("neo4j-driver");
+
+const cleanNeo4jObject = (obj) => {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key,
+      neo4j.isInt(value) ? value.toNumber() : value,
+    ]),
+  );
+};
 
 const getAllStudents = async (req, res) => {
   try {
@@ -164,7 +174,11 @@ const updateCourseProperties = async (req, res) => {
 
     const updatedCourse = await session.run(query, params);
 
-    const course = updatedCourse.records[0].get("c").properties;
+    // get raw neo4j properties
+    const rawCourse = updatedCourse.records[0].get("c").properties;
+
+    // clean neo4j integers
+    const course = cleanNeo4jObject(rawCourse);
 
     res.json({
       msg: "Course updated successfully",
@@ -179,9 +193,74 @@ const updateCourseProperties = async (req, res) => {
     await session.close();
   }
 };
+const getAllCourses = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (c:Course)
+      RETURN c
+      ORDER BY c.Code
+    `);
+
+    const courses = result.records.map((record) => {
+      const rawCourse = record.get("c").properties;
+
+      return cleanNeo4jObject(rawCourse);
+    });
+
+    res.json({
+      count: courses.length,
+      courses,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
+const getCourseByCode = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const { courseCode } = req.params;
+
+    const result = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      RETURN c
+      `,
+      { courseCode },
+    );
+
+    if (result.records.length === 0) {
+      return res.status(404).json({
+        msg: "Course not found",
+      });
+    }
+
+    const rawCourse = result.records[0].get("c").properties;
+
+    const course = cleanNeo4jObject(rawCourse);
+
+    res.json(course);
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
 module.exports = {
   getAllStudents,
   getStudentById,
   deleteStudent,
   updateCourseProperties,
+  getCourseByCode,
+  getAllCourses,
 };

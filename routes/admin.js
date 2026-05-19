@@ -9,6 +9,8 @@ const {
   getStudentById,
   deleteStudent,
   updateCourseProperties,
+  getAllCourses,
+  getCourseByCode,
 } = require("../controllers/adminController");
 const superAdminOnly = require("../middleware/superAdminMiddleware");
 
@@ -148,4 +150,55 @@ router.delete("/student/:studentId", protect, adminOnly, deleteStudent);
  *         description: Server error
  */
 router.patch("/course/:courseCode", protect, adminOnly, updateCourseProperties);
+/**
+ * @swagger
+ * /admin/courses:
+ *   get:
+ *     summary: Get all courses
+ *     description: Returns a list of all courses ordered by course code.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all courses retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       500:
+ *         description: Server error
+ */
+router.get("/courses", protect, adminOnly, getAllCourses);
+/**
+ * @swagger
+ * /admin/course/{courseCode}:
+ *   get:
+ *     summary: Get course by code
+ *     description: Returns a single course by its unique course code.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS112"
+ *     responses:
+ *       200:
+ *         description: Course retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/course/:courseCode", protect, adminOnly, getCourseByCode);
 module.exports = router;
