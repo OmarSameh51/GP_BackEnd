@@ -10,7 +10,9 @@ const cleanNeo4jObject = (obj) => {
     ]),
   );
 };
-
+const normalizeCourseCode = (courseCode) => {
+  return courseCode.replace(/\s+/g, "").toUpperCase();
+};
 const getAllStudents = async (req, res) => {
   try {
     const students = await User.find({
@@ -83,8 +85,7 @@ const updateCourseProperties = async (req, res) => {
   const session = driver.session();
 
   try {
-    const { courseCode } = req.params;
-
+    const normalizedCourseCode = normalizeCourseCode(req.params.courseCode);
     const { isActive, Required_Hours, Required_level, Semester } = req.body;
 
     // validation
@@ -135,7 +136,7 @@ const updateCourseProperties = async (req, res) => {
         MATCH (c:Course {Code: $courseCode})
         RETURN c
         `,
-      { courseCode },
+      { courseCode: normalizedCourseCode },
     );
 
     if (existingCourse.records.length === 0) {
@@ -146,8 +147,9 @@ const updateCourseProperties = async (req, res) => {
 
     // build dynamic SET query
     let updates = [];
-    let params = { courseCode };
-
+    let params = {
+      courseCode: normalizedCourseCode,
+    };
     if (isActive !== undefined) {
       updates.push("c.isActive = $isActive");
       params.isActive = isActive;
@@ -235,14 +237,15 @@ const getCourseByCode = async (req, res) => {
   const session = driver.session();
 
   try {
-    const { courseCode } = req.params;
-
+    const normalizedCourseCode = normalizeCourseCode(req.params.courseCode);
     const result = await session.run(
       `
       MATCH (c:Course {Code: $courseCode})
       RETURN c
       `,
-      { courseCode },
+      {
+        courseCode: normalizedCourseCode,
+      },
     );
 
     if (result.records.length === 0) {
@@ -265,6 +268,209 @@ const getCourseByCode = async (req, res) => {
     await session.close();
   }
 };
+const getCourseRelations = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const normalizedCourseCode = normalizeCourseCode(req.params.courseCode);
+    // check if course exists
+    const courseCheck = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      RETURN c
+      `,
+      {
+        courseCode: normalizedCourseCode,
+      },
+    );
+
+    if (courseCheck.records.length === 0) {
+      return res.status(404).json({
+        msg: "Course not found",
+      });
+    }
+
+    // prerequisites (Requires)
+    const prerequisitesResult = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})-[:Requires]->(pre:Course)
+      RETURN pre
+      `,
+      {
+        courseCode: normalizedCourseCode,
+      },
+    );
+
+    // unlocked courses
+    const unlocksResult = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})<-[:Requires]-(next:Course)
+      RETURN next
+      `,
+      {
+        courseCode: normalizedCourseCode,
+      },
+    );
+
+    const prerequisites = prerequisitesResult.records.map((record) =>
+      cleanNeo4jObject(record.get("pre").properties),
+    );
+
+    const unlocks = unlocksResult.records.map((record) =>
+      cleanNeo4jObject(record.get("next").properties),
+    );
+
+    res.json({
+      courseCode: normalizedCourseCode,
+      prerequisites,
+      unlocks,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
+const addPrerequisite = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const courseCode = normalizeCourseCode(req.params.courseCode);
+
+    const prerequisiteCode = normalizeCourseCode(req.body.prerequisiteCode);
+
+    if (!prerequisiteCode) {
+      return res.status(400).json({
+        msg: "prerequisiteCode is required",
+      });
+    }
+
+    if (courseCode === prerequisiteCode) {
+      return res.status(400).json({
+        msg: "Course cannot require itself",
+      });
+    }
+
+    // check courses exist
+    const result = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      MATCH (pre:Course {Code: $prerequisiteCode})
+      RETURN c, pre
+      `,
+      {
+        courseCode,
+        prerequisiteCode,
+      },
+    );
+
+    if (result.records.length === 0) {
+      return res.status(404).json({
+        msg: "Course or prerequisite not found",
+      });
+    }
+
+    // create relationship
+    await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      MATCH (pre:Course {Code: $prerequisiteCode})
+      MERGE (c)-[:Requires]->(pre)
+      `,
+      {
+        courseCode,
+        prerequisiteCode,
+      },
+    );
+
+    res.json({
+      msg: `${courseCode} now requires ${prerequisiteCode}`,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
+
+const removePrerequisite = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const courseCode = normalizeCourseCode(req.params.courseCode);
+
+    const prerequisiteCode = normalizeCourseCode(req.params.prerequisiteCode);
+
+    const result = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      -[r:Requires]->
+      (pre:Course {Code: $prerequisiteCode})
+      DELETE r
+      RETURN COUNT(r) AS deletedCount
+      `,
+      {
+        courseCode,
+        prerequisiteCode,
+      },
+    );
+
+    const deletedCount = result.records[0].get("deletedCount").toNumber();
+
+    if (deletedCount === 0) {
+      return res.status(404).json({
+        msg: "Relationship not found",
+      });
+    }
+
+    res.json({
+      msg: `${prerequisiteCode} removed from prerequisites of ${courseCode}`,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
+const getActiveCourses = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const result = await session.run(`
+      MATCH (c:Course)
+      WHERE c.isActive = true
+      RETURN c
+      ORDER BY c.Code
+    `);
+
+    const courses = result.records.map((record) => {
+      const rawCourse = record.get("c").properties;
+
+      return cleanNeo4jObject(rawCourse);
+    });
+
+    res.json({
+      count: courses.length,
+      courses,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
 module.exports = {
   getAllStudents,
   getStudentById,
@@ -272,4 +478,8 @@ module.exports = {
   updateCourseProperties,
   getCourseByCode,
   getAllCourses,
+  getCourseRelations,
+  addPrerequisite,
+  removePrerequisite,
+  getActiveCourses,
 };

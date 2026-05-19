@@ -11,6 +11,10 @@ const {
   updateCourseProperties,
   getAllCourses,
   getCourseByCode,
+  getCourseRelations,
+  addPrerequisite,
+  removePrerequisite,
+  getActiveCourses,
 } = require("../controllers/adminController");
 const superAdminOnly = require("../middleware/superAdminMiddleware");
 
@@ -95,6 +99,27 @@ router.get("/student/:studentId", protect, adminOnly, getStudentById);
  *         description: Server error
  */
 router.delete("/student/:studentId", protect, adminOnly, deleteStudent);
+/**
+ * @swagger
+ * /admin/courses/active:
+ *   get:
+ *     summary: Get all active courses
+ *     description: Returns all active courses only.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active courses retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       500:
+ *         description: Server error
+ */
+router.get("/courses/active", protect, adminOnly, getActiveCourses);
 /**
  * @swagger
  * /admin/course/{courseCode}:
@@ -201,4 +226,129 @@ router.get("/courses", protect, adminOnly, getAllCourses);
  *         description: Server error
  */
 router.get("/course/:courseCode", protect, adminOnly, getCourseByCode);
+/**
+ * @swagger
+ * /admin/course/{courseCode}/relations:
+ *   get:
+ *     summary: Get course relations
+ *     description: Returns the prerequisites (courses that must be taken before) and the courses that this course unlocks.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS112"
+ *     responses:
+ *       200:
+ *         description: Course relations retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  "/course/:courseCode/relations",
+  protect,
+  adminOnly,
+  getCourseRelations,
+);
+/**
+ * @swagger
+ * /admin/course/{courseCode}/prerequisite:
+ *   post:
+ *     summary: Add a prerequisite to a course
+ *     description: Creates a Requires relationship between two courses. A course cannot require itself.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS201"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - prerequisiteCode
+ *             properties:
+ *               prerequisiteCode:
+ *                 type: string
+ *                 example: "CS112"
+ *     responses:
+ *       200:
+ *         description: Prerequisite added successfully
+ *       400:
+ *         description: prerequisiteCode is required or course cannot require itself
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Course or prerequisite not found
+ *       500:
+ *         description: Server error
+ */
+router.post(
+  "/course/:courseCode/prerequisite",
+  protect,
+  adminOnly,
+  addPrerequisite,
+);
+/**
+ * @swagger
+ * /admin/course/{courseCode}/prerequisite/{prerequisiteCode}:
+ *   delete:
+ *     summary: Remove a prerequisite from a course
+ *     description: Deletes the Requires relationship between two courses.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS201"
+ *       - in: path
+ *         name: prerequisiteCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS112"
+ *     responses:
+ *       200:
+ *         description: Prerequisite removed successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Relationship not found
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+  "/course/:courseCode/prerequisite/:prerequisiteCode",
+  protect,
+  adminOnly,
+  removePrerequisite,
+);
 module.exports = router;
