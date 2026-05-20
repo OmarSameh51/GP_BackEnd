@@ -6,12 +6,15 @@ const swaggerUi = require("swagger-ui-express");
 const connectDB = require("./config/db");
 const { connectNeo4j } = require("./config/neo4j");
 const adminRoutes = require("./routes/admin");
-connectDB();
-connectNeo4j();
-
 const app = express();
 
 app.use(express.json());
+
+app.use(async (_req, _res, next) => {
+  await connectDB();
+  await connectNeo4j();
+  next();
+});
 
 // Swagger
 const swaggerOptions = {

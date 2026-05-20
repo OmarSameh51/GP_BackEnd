@@ -8,13 +8,17 @@ const driver = neo4j.driver(
   ),
 );
 
+let isConnected = false;
+
 const connectNeo4j = async () => {
+  if (isConnected) return;
+
   try {
     await driver.verifyConnectivity();
+    isConnected = true;
     console.log("Neo4j connected");
   } catch (err) {
     console.error("Neo4j connection failed:", err.message);
-    // process.exit(1);
   }
 };
 
