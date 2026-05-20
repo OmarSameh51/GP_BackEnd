@@ -11,6 +11,7 @@ const cleanNeo4jObject = (obj) => {
   );
 };
 const normalizeCourseCode = (courseCode) => {
+  // cs 122 => CS122 | cS133=> CS133
   return courseCode.replace(/\s+/g, "").toUpperCase();
 };
 const getAllStudents = async (req, res) => {
@@ -373,12 +374,14 @@ const addPrerequisite = async (req, res) => {
       });
     }
 
-    // create relationship
+    // create Requires + Unlocks
     await session.run(
       `
       MATCH (c:Course {Code: $courseCode})
       MATCH (pre:Course {Code: $prerequisiteCode})
+
       MERGE (c)-[:Requires]->(pre)
+      MERGE (pre)-[:Unlocks]->(c)
       `,
       {
         courseCode,
@@ -398,7 +401,6 @@ const addPrerequisite = async (req, res) => {
     await session.close();
   }
 };
-
 const removePrerequisite = async (req, res) => {
   const session = driver.session();
 
@@ -412,7 +414,12 @@ const removePrerequisite = async (req, res) => {
       MATCH (c:Course {Code: $courseCode})
       -[r:Requires]->
       (pre:Course {Code: $prerequisiteCode})
-      DELETE r
+
+      OPTIONAL MATCH
+      (pre)-[u:Unlocks]->(c)
+
+      DELETE r, u
+
       RETURN COUNT(r) AS deletedCount
       `,
       {
@@ -421,7 +428,9 @@ const removePrerequisite = async (req, res) => {
       },
     );
 
-    const deletedCount = result.records[0].get("deletedCount").toNumber();
+    const deletedCount = neo4j.integer.toNumber(
+      result.records[0].get("deletedCount"),
+    );
 
     if (deletedCount === 0) {
       return res.status(404).json({
@@ -471,6 +480,138 @@ const getActiveCourses = async (req, res) => {
     await session.close();
   }
 };
+const addCourse = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    let {
+      Code,
+      name,
+      Credits,
+      Semester,
+      Required_level,
+      Required_Hours,
+      isActive,
+    } = req.body;
+
+    // normalize course code
+    Code = normalizeCourseCode(Code);
+
+    // validation
+    if (!Code || typeof Code !== "string") {
+      return res.status(400).json({
+        msg: "Course code is required",
+      });
+    }
+
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({
+        msg: "Course name is required",
+      });
+    }
+
+    if (
+      typeof Credits !== "number" ||
+      !Number.isInteger(Credits) ||
+      Credits <= 0
+    ) {
+      return res.status(400).json({
+        msg: "Credits must be a positive integer",
+      });
+    }
+
+    if (
+      typeof Semester !== "number" ||
+      !Number.isInteger(Semester) ||
+      ![1, 2].includes(Semester)
+    ) {
+      return res.status(400).json({
+        msg: "Semester must be 1 or 2",
+      });
+    }
+
+    if (
+      typeof Required_level !== "number" ||
+      !Number.isInteger(Required_level) ||
+      ![1, 2, 3, 4].includes(Required_level)
+    ) {
+      return res.status(400).json({
+        msg: "Required_level must be between 1 and 4",
+      });
+    }
+
+    if (
+      typeof Required_Hours !== "number" ||
+      !Number.isInteger(Required_Hours) ||
+      Required_Hours < 0
+    ) {
+      return res.status(400).json({
+        msg: "Required_Hours must be a positive integer",
+      });
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        msg: "isActive must be boolean",
+      });
+    }
+
+    // check if course exists
+    const existingCourse = await session.run(
+      `
+      MATCH (c:Course {Code: $Code})
+      RETURN c
+      `,
+      { Code },
+    );
+
+    if (existingCourse.records.length > 0) {
+      return res.status(409).json({
+        msg: "Course already exists",
+      });
+    }
+
+    // create course
+    const result = await session.run(
+      `
+      CREATE (c:Course {
+        Code: $Code,
+        name: $name,
+        Credits: $Credits,
+        Semester: $Semester,
+        Required_level: $Required_level,
+        Required_Hours: $Required_Hours,
+        isActive: $isActive
+      })
+      RETURN c
+      `,
+      {
+        Code,
+        name,
+        Credits: neo4j.int(Credits),
+        Semester: neo4j.int(Semester),
+        Required_level: neo4j.int(Required_level),
+        Required_Hours: neo4j.int(Required_Hours),
+        isActive,
+      },
+    );
+
+    const rawCourse = result.records[0].get("c").properties;
+    const course = cleanNeo4jObject(rawCourse);
+
+    res.status(201).json({
+      msg: "Course added successfully",
+      course,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
 module.exports = {
   getAllStudents,
   getStudentById,
@@ -482,4 +623,5 @@ module.exports = {
   addPrerequisite,
   removePrerequisite,
   getActiveCourses,
+  addCourse,
 };

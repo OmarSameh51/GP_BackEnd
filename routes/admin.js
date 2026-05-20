@@ -15,6 +15,7 @@ const {
   addPrerequisite,
   removePrerequisite,
   getActiveCourses,
+  addCourse,
 } = require("../controllers/adminController");
 const superAdminOnly = require("../middleware/superAdminMiddleware");
 
@@ -266,7 +267,7 @@ router.get(
  * /admin/course/{courseCode}/prerequisite:
  *   post:
  *     summary: Add a prerequisite to a course
- *     description: Creates a Requires relationship between two courses. A course cannot require itself.
+ *     description: Creates a Requires and Unlocks relationship between two courses. A course cannot require itself.
  *     tags:
  *       - Admin
  *     security:
@@ -315,7 +316,7 @@ router.post(
  * /admin/course/{courseCode}/prerequisite/{prerequisiteCode}:
  *   delete:
  *     summary: Remove a prerequisite from a course
- *     description: Deletes the Requires relationship between two courses.
+ *     description: Deletes the Requires relationship (and Unlocks if exists) between two courses.
  *     tags:
  *       - Admin
  *     security:
@@ -351,4 +352,69 @@ router.delete(
   adminOnly,
   removePrerequisite,
 );
+/**
+ * @swagger
+ * /admin/course:
+ *   post:
+ *     summary: Add a new course
+ *     description: Creates a new course node in the database. All fields are required.
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - Code
+ *               - name
+ *               - Credits
+ *               - Semester
+ *               - Required_level
+ *               - Required_Hours
+ *               - isActive
+ *             properties:
+ *               Code:
+ *                 type: string
+ *                 example: "CS201"
+ *               name:
+ *                 type: string
+ *                 example: "Data Structures"
+ *               Credits:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 3
+ *               Semester:
+ *                 type: integer
+ *                 enum: [1, 2]
+ *                 example: 1
+ *               Required_level:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *                 example: 2
+ *               Required_Hours:
+ *                 type: integer
+ *                 minimum: 0
+ *                 example: 90
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       201:
+ *         description: Course added successfully
+ *       400:
+ *         description: Validation error — one of the required fields is missing or invalid
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       409:
+ *         description: Course already exists
+ *       500:
+ *         description: Server error
+ */
+router.post("/course", protect, adminOnly, addCourse);
 module.exports = router;
