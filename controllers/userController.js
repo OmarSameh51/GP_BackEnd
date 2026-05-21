@@ -45,7 +45,7 @@ const addCourse = async (req, res) => {
     );
 
     // check if already passed
-    const hasPassed = existingCourses.some((c) => c.grade >= 60);
+    const hasPassed = existingCourses.some((c) => c.grade >= 50);
 
     if (hasPassed) {
       return res.status(400).json({
@@ -54,7 +54,7 @@ const addCourse = async (req, res) => {
     }
 
     // check if already failed once
-    const failedAttempt = existingCourses.find((c) => c.grade < 60);
+    const failedAttempt = existingCourses.find((c) => c.grade < 50);
 
     // if already failed and trying another F
     if (failedAttempt && grade < 50) {
