@@ -40,19 +40,19 @@ const swaggerOptions = {
   apis: ["./routes/*.js"],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use(
-  "/api/docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    customCssUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui.min.css",
-    customJs: [
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui-bundle.min.js",
-      "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui-standalone-preset.min.js",
-    ],
-  }),
-);
+// const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// app.use(
+//   "/api/docs",
+//   swaggerUi.serve,
+//   swaggerUi.setup(swaggerSpec, {
+//     customCssUrl:
+//       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui.min.css",
+//     customJs: [
+//       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui-bundle.min.js",
+//       "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.18.2/swagger-ui-standalone-preset.min.js",
+//     ],
+//   }),
+// );
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
