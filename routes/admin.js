@@ -16,6 +16,7 @@ const {
   removePrerequisite,
   getActiveCourses,
   addCourse,
+  getUnlockedCourses,
 } = require("../controllers/adminController");
 const superAdminOnly = require("../middleware/superAdminMiddleware");
 
@@ -417,4 +418,39 @@ router.delete(
  *         description: Server error
  */
 router.post("/course", protect, adminOnly, addCourse);
+/**
+ * @swagger
+ * /admin/course/{courseCode}/unlocks:
+ *   get:
+ *     summary: Get courses unlocked by a course
+ *     description: Returns all courses that require the given course as a prerequisite (i.e. courses that become available after completing it).
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: courseCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "CS112"
+ *     responses:
+ *       200:
+ *         description: Unlocked courses retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin only
+ *       404:
+ *         description: Course not found
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  "/course/:courseCode/unlocks",
+  protect,
+  adminOnly,
+  getUnlockedCourses,
+);
 module.exports = router;

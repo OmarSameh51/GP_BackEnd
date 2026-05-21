@@ -612,6 +612,61 @@ const addCourse = async (req, res) => {
     await session.close();
   }
 };
+const getUnlockedCourses = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const normalizedCourseCode = normalizeCourseCode(req.params.courseCode);
+
+    // check if course exists
+    const courseCheck = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      RETURN c
+      `,
+      {
+        courseCode: normalizedCourseCode,
+      },
+    );
+
+    if (courseCheck.records.length === 0) {
+      return res.status(404).json({
+        msg: "Course not found",
+      });
+    }
+
+    // get unlocked courses
+    const result = await session.run(
+      `
+      MATCH (c:Course {Code: $courseCode})
+      <-[:Requires]-
+      (next:Course)
+      RETURN next
+      ORDER BY next.Code
+      `,
+      {
+        courseCode: normalizedCourseCode,
+      },
+    );
+
+    const unlockedCourses = result.records.map((record) =>
+      cleanNeo4jObject(record.get("next").properties),
+    );
+
+    res.json({
+      courseCode: normalizedCourseCode,
+      unlocksCount: unlockedCourses.length,
+      unlocks: unlockedCourses,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
 module.exports = {
   getAllStudents,
   getStudentById,
@@ -624,4 +679,5 @@ module.exports = {
   removePrerequisite,
   getActiveCourses,
   addCourse,
+  getUnlockedCourses,
 };
