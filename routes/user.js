@@ -8,6 +8,7 @@ const {
   editCourse,
   deleteCourse,
   updatePreferredDepartment,
+  updateDepartment,
 } = require("../controllers/userController");
 /**
  * @swagger
@@ -333,5 +334,40 @@ router.put("/preferred-department", protect, updatePreferredDepartment);
  *                       type: string
  */
 router.get("/profile", protect, getProfile);
-
+/**
+ * @swagger
+ * /user/department:
+ *   patch:
+ *     summary: Update student department
+ *     description: Allows a student to update their department. Only students can perform this action.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - department
+ *             properties:
+ *               department:
+ *                 type: string
+ *                 enum: [AI, CS, IT, IS, General]
+ *                 example: "CS"
+ *     responses:
+ *       200:
+ *         description: Department updated successfully
+ *       400:
+ *         description: Department is required or invalid department
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only students can update department
+ *       500:
+ *         description: Server error
+ */
+router.patch("/department", protect, updateDepartment);
 module.exports = router;

@@ -1,3 +1,5 @@
+const { driver } = require("../config/neo4j");
+
 const User = require("../models/User");
 
 const { getCourseFromNeo4j } = require("../services/courseService");
@@ -9,25 +11,52 @@ const calculateGPA = require("../utils/calculateGPA");
 const normalizeCourseCode = (courseCode) => {
   return courseCode.replace(/\s+/g, "").toUpperCase();
 };
+const updateStudentNeo4jStats = async (user) => {
+  const session = driver.session();
 
+  try {
+    await session.run(
+      `
+      MATCH (s:Student {studentId: $studentId})
+      SET s.gpa = toFloat($gpa),
+          s.totalCreditHours = toInteger($totalCreditHours),
+          s.academicYear = toInteger($academicYear),
+          s.department = $department,
+          s.preferredDepartment = $preferredDepartment
+      `,
+      {
+        studentId: user.studentId,
+        gpa: user.gpa,
+        totalCreditHours: user.totalCreditHours,
+        academicYear: user.academicYear,
+        department: user.department,
+        preferredDepartment: user.preferredDepartment,
+      },
+    );
+  } finally {
+    await session.close();
+  }
+};
 const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
 
     let { courseCode, grade } = req.body;
-    grade = Number(grade);
-    // validation
-    if (isNaN(grade) || grade < 0 || grade > 100) {
-      return res.status(400).json({
-        msg: "Grade must be a number between 0 and 100",
-      });
-    }
+
+    // validation first
     if (!courseCode || grade === undefined) {
       return res.status(400).json({
         msg: "Course code and grade are required",
       });
     }
 
+    grade = Number(grade);
+
+    if (isNaN(grade) || grade < 0 || grade > 100) {
+      return res.status(400).json({
+        msg: "Grade must be a number between 0 and 100",
+      });
+    }
     // uppercase course code / normalize
     courseCode = normalizeCourseCode(courseCode);
     // get course from Neo4j
@@ -44,7 +73,7 @@ const addCourse = async (req, res) => {
 
     // get all attempts for this course
     const existingCourses = user.enrolledCourses.filter(
-      (c) => c.courseCode === courseCode,
+      (c) => c.courseCode === course.Code,
     );
 
     // check if already passed
@@ -85,7 +114,7 @@ const addCourse = async (req, res) => {
     user.gpa = result.gpa;
     user.totalCreditHours = result.totalCreditHours;
     await user.save();
-
+    await updateStudentNeo4jStats(user);
     res.json({
       msg: "Course added successfully",
       course: newCourse,
@@ -180,6 +209,7 @@ const editCourse = async (req, res) => {
     user.totalCreditHours = result.totalCreditHours;
 
     await user.save();
+    await updateStudentNeo4jStats(user);
 
     res.json({
       msg: "Course updated successfully",
@@ -219,6 +249,7 @@ const deleteCourse = async (req, res) => {
     user.totalCreditHours = result.totalCreditHours;
 
     await user.save();
+    await updateStudentNeo4jStats(user);
 
     res.json({
       msg: "Course deleted successfully",
@@ -264,10 +295,60 @@ const updatePreferredDepartment = async (req, res) => {
     user.preferredDepartment = preferredDepartment;
 
     await user.save();
+    await updateStudentNeo4jStats(user);
 
     res.json({
       msg: "Preferred department updated successfully",
       preferredDepartment: user.preferredDepartment,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
+const updateDepartment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { department } = req.body;
+
+    const allowedDepartments = ["AI", "CS", "IT", "IS", "General"];
+
+    // validation
+    if (!department) {
+      return res.status(400).json({
+        msg: "Department is required",
+      });
+    }
+
+    if (!allowedDepartments.includes(department)) {
+      return res.status(400).json({
+        msg: "Invalid department",
+      });
+    }
+
+    // get user
+    const user = await User.findById(userId);
+
+    // student only
+    if (user.role !== "student") {
+      return res.status(403).json({
+        msg: "Only students can update department",
+      });
+    }
+
+    // update mongo
+    user.department = department;
+
+    await user.save();
+
+    // update neo4j
+    await updateStudentNeo4jStats(user);
+
+    res.json({
+      msg: "Department updated successfully",
+      department: user.department,
     });
   } catch (err) {
     res.status(500).json({
@@ -282,4 +363,5 @@ module.exports = {
   editCourse,
   deleteCourse,
   updatePreferredDepartment,
+  updateDepartment,
 };

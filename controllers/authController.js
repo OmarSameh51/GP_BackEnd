@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const generateStudentId = require("../utils/generateStudentId");
+const { driver } = require("../config/neo4j");
 
 // REGISTER
 exports.register = async (req, res) => {
@@ -45,6 +46,40 @@ exports.register = async (req, res) => {
 
     await user.save();
 
+    const session = driver.session();
+
+    try {
+      await session.run(
+        `
+    CREATE (s:Student {
+      studentId: $studentId,
+      firstName: $firstName,
+      lastName: $lastName,
+      department: $department,
+      academicYear: toInteger($academicYear),
+      preferredDepartment: $preferredDepartment,
+      gpa: $gpa,
+     totalCreditHours: toInteger($totalCreditHours)
+    })
+    `,
+        {
+          studentId: user.studentId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          department: user.department,
+          academicYear: user.academicYear,
+          preferredDepartment: user.preferredDepartment,
+          gpa: user.gpa,
+          totalCreditHours: user.totalCreditHours,
+        },
+      );
+    } catch (neoErr) {
+      await User.findByIdAndDelete(user._id);
+
+      throw new Error("Failed to create student node in Neo4j");
+    } finally {
+      await session.close();
+    }
     res.status(201).json({
       msg: "User registered successfully",
       user: {
