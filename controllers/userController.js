@@ -6,6 +6,10 @@ const convertGradeToGPA = require("../utils/gradeConverter");
 
 const calculateGPA = require("../utils/calculateGPA");
 
+const normalizeCourseCode = (courseCode) => {
+  return courseCode.replace(/\s+/g, "").toUpperCase();
+};
+
 const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -24,9 +28,8 @@ const addCourse = async (req, res) => {
       });
     }
 
-    // uppercase course code
-    courseCode = courseCode.trim().toUpperCase();
-
+    // uppercase course code / normalize
+    courseCode = normalizeCourseCode(courseCode);
     // get course from Neo4j
     const course = await getCourseFromNeo4j(courseCode);
 
