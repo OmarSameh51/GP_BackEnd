@@ -13,14 +13,13 @@ const calculateGPA = (courses) => {
   courses.forEach((course) => {
     const creditHours = Number(course.creditHours) || 0;
     const gradePoints = Number(course.gradePoints) || 0;
-    const grade = Number(course.grade) || 0;
 
     // GPA calculation (all attempts)
     totalPoints += creditHours * gradePoints;
     totalHoursForGPA += creditHours;
 
     // passed credit hours only
-    if (grade >= 50) {
+    if (course.isPassed === true) {
       passedCreditHours += creditHours;
     }
   });

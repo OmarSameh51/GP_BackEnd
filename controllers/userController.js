@@ -41,12 +41,16 @@ const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    let { courseCode, grade } = req.body;
-
+    let { courseCode, grade, isPassed } = req.body;
     // validation first
-    if (!courseCode || grade === undefined) {
+    if (!courseCode || grade === undefined || isPassed === undefined) {
       return res.status(400).json({
-        msg: "Course code and grade are required",
+        msg: "Course code, grade and isPassed are required",
+      });
+    }
+    if (typeof isPassed !== "boolean") {
+      return res.status(400).json({
+        msg: "isPassed must be true or false",
       });
     }
 
@@ -70,15 +74,18 @@ const addCourse = async (req, res) => {
 
     // get user
     const user = await User.findById(userId);
-
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
     // get all attempts for this course
     const existingCourses = user.enrolledCourses.filter(
       (c) => c.courseCode === course.Code,
     );
 
     // check if already passed
-    const hasPassed = existingCourses.some((c) => c.grade >= 50);
-
+    const hasPassed = existingCourses.some((c) => c.isPassed === true);
     if (hasPassed) {
       return res.status(400).json({
         msg: "You already passed this course",
@@ -86,10 +93,9 @@ const addCourse = async (req, res) => {
     }
 
     // check if already failed once
-    const failedAttempt = existingCourses.find((c) => c.grade < 50);
-
+    const failedAttempt = existingCourses.find((c) => c.isPassed === false);
     // if already failed and trying another F
-    if (failedAttempt && grade < 50) {
+    if (failedAttempt && !isPassed) {
       return res.status(400).json({
         msg: "You already failed this course once. Retake must be a passing grade",
       });
@@ -104,6 +110,7 @@ const addCourse = async (req, res) => {
       courseName: course.name,
       creditHours: Number(course.Credits),
       grade,
+      isPassed,
       gradePoints,
     };
     // add course
@@ -153,12 +160,19 @@ const editCourse = async (req, res) => {
   try {
     const userId = req.user.id;
     const { courseId } = req.params;
-    let grade = req.body?.grade;
+
+    let { grade, isPassed } = req.body;
 
     // validation
-    if (grade === undefined) {
+    if (grade === undefined || isPassed === undefined) {
       return res.status(400).json({
-        msg: "Grade is required",
+        msg: "Grade and isPassed are required",
+      });
+    }
+
+    if (typeof isPassed !== "boolean") {
+      return res.status(400).json({
+        msg: "isPassed must be true or false",
       });
     }
 
@@ -172,7 +186,11 @@ const editCourse = async (req, res) => {
 
     // get user
     const user = await User.findById(userId);
-
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
     // get target course
     const course = user.enrolledCourses.id(courseId);
 
@@ -188,11 +206,19 @@ const editCourse = async (req, res) => {
         c.courseCode === course.courseCode && c._id.toString() !== courseId,
     );
 
-    // other failed attempts
-    const otherFailedAttempts = sameCourses.filter((c) => c.grade < 50);
+    // check if another passed attempt exists
+    const alreadyPassed = sameCourses.some((c) => c.isPassed === true);
 
-    // prevent 2 F attempts
-    if (grade < 50 && otherFailedAttempts.length > 0) {
+    if (isPassed && alreadyPassed) {
+      return res.status(400).json({
+        msg: "You already passed this course",
+      });
+    }
+
+    // other failed attempts
+    const failedAttempt = sameCourses.find((c) => c.isPassed === false);
+
+    if (failedAttempt && !isPassed) {
       return res.status(400).json({
         msg: "Only one failed attempt is allowed for this course",
       });
@@ -200,6 +226,7 @@ const editCourse = async (req, res) => {
 
     // update course
     course.grade = grade;
+    course.isPassed = isPassed;
     course.gradePoints = convertGradeToGPA(grade);
 
     // recalculate GPA
@@ -229,7 +256,11 @@ const deleteCourse = async (req, res) => {
 
     // get user
     const user = await User.findById(userId);
-
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
     // find course
     const course = user.enrolledCourses.id(courseId);
 
@@ -283,7 +314,11 @@ const updatePreferredDepartment = async (req, res) => {
 
     // get user
     const user = await User.findById(userId);
-
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
     // student only
     if (user.role !== "student") {
       return res.status(403).json({
@@ -330,7 +365,11 @@ const updateDepartment = async (req, res) => {
 
     // get user
     const user = await User.findById(userId);
-
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
     // student only
     if (user.role !== "student") {
       return res.status(403).json({
