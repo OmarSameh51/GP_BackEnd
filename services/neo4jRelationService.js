@@ -57,8 +57,8 @@ const updateIntendsRelation = async (studentId, preferredDepartment) => {
       WITH s
 
       MATCH (d:Department {
-  code: $preferredDepartment
-})
+      code: $preferredDepartment
+ })
 
       MERGE (s)-[:INTENDS]->(d)
       `,
@@ -71,9 +71,24 @@ const updateIntendsRelation = async (studentId, preferredDepartment) => {
     await session.close();
   }
 };
+const deleteStudentNode = async (studentId) => {
+  const session = driver.session();
 
+  try {
+    await session.run(
+      `
+      MATCH (s:Student {studentId: $studentId})
+      DETACH DELETE s
+      `,
+      { studentId },
+    );
+  } finally {
+    await session.close();
+  }
+};
 module.exports = {
   createTookRelation,
   deleteTookRelation,
   updateIntendsRelation,
+  deleteStudentNode,
 };

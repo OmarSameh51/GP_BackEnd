@@ -14,8 +14,10 @@ const {
  * @swagger
  * /user/course:
  *   post:
- *     summary: Add a course to authenticated student
- *     tags: [User]
+ *     summary: Add a course to student record
+ *     description: Adds a completed or failed course to the student's enrolled courses, recalculates GPA and total credit hours, and creates a TOOK relationship in Neo4j if the course was passed.
+ *     tags:
+ *       - User
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -27,13 +29,19 @@ const {
  *             required:
  *               - courseCode
  *               - grade
+ *               - isPassed
  *             properties:
  *               courseCode:
  *                 type: string
- *                 example: "CS111"
+ *                 example: "CS112"
  *               grade:
  *                 type: number
+ *                 minimum: 0
+ *                 maximum: 100
  *                 example: 85
+ *               isPassed:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Course added successfully
@@ -44,39 +52,64 @@ const {
  *               properties:
  *                 msg:
  *                   type: string
- *                   example: "Course added successfully"
+ *                   example: Course added successfully
  *                 course:
  *                   type: object
  *                   properties:
  *                     courseCode:
  *                       type: string
- *                       example: "CS111"
+ *                       example: "CS112"
  *                     courseName:
  *                       type: string
- *                       example: "Introduction to Computer Science"
+ *                       example: "Programming Language 1"
  *                     creditHours:
  *                       type: number
  *                       example: 3
  *                     grade:
  *                       type: number
  *                       example: 85
+ *                     isPassed:
+ *                       type: boolean
+ *                       example: true
  *                     gradePoints:
  *                       type: number
- *                       example: 3.75
+ *                       example: 3.7
  *       400:
- *         description: Validation error
+ *         description: Validation error — one of the following
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               missingFields:
+ *                 value: { msg: "Course code, grade and isPassed are required" }
+ *               invalidIsPassed:
+ *                 value: { msg: "isPassed must be true or false" }
+ *               invalidGrade:
+ *                 value: { msg: "Grade must be a number between 0 and 100" }
+ *               alreadyPassed:
+ *                 value: { msg: "You already passed this course" }
+ *               failedTwice:
+ *                 value: { msg: "You already failed this course once. Retake must be a passing grade" }
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Course not found
+ *         description: Course not found or user not found
+ *       500:
+ *         description: Server error
  */
 router.post("/course", protect, addCourse);
 /**
  * @swagger
  * /user/course/{courseId}:
- *   put:
- *     summary: Edit a student's course grade
- *     tags: [User]
+ *   patch:
+ *     summary: Edit an enrolled course
+ *     description: Updates the grade and isPassed status of an enrolled course. Recalculates GPA and total credit hours. Creates or deletes the TOOK relationship in Neo4j based on the pass/fail status change.
+ *     tags:
+ *       - User
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -85,7 +118,7 @@ router.post("/course", protect, addCourse);
  *         required: true
  *         schema:
  *           type: string
- *         example: "6a04215d8ccbb846ffe27aa1"
+ *         example: "664f1e2b3c4d5e6f7a8b9c0d"
  *     requestBody:
  *       required: true
  *       content:
@@ -94,21 +127,76 @@ router.post("/course", protect, addCourse);
  *             type: object
  *             required:
  *               - grade
+ *               - isPassed
  *             properties:
  *               grade:
  *                 type: number
- *                 example: 75
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 example: 90
+ *               isPassed:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Course updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *                   example: Course updated successfully
+ *                 course:
+ *                   type: object
+ *                   properties:
+ *                     courseCode:
+ *                       type: string
+ *                       example: "CS112"
+ *                     courseName:
+ *                       type: string
+ *                       example: "Programming Language 1"
+ *                     creditHours:
+ *                       type: number
+ *                       example: 3
+ *                     grade:
+ *                       type: number
+ *                       example: 90
+ *                     isPassed:
+ *                       type: boolean
+ *                       example: true
+ *                     gradePoints:
+ *                       type: number
+ *                       example: 4.0
  *       400:
- *         description: Invalid grade
- *       404:
- *         description: Course not found
+ *         description: Validation error — one of the following
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               missingFields:
+ *                 value: { msg: "Grade and isPassed are required" }
+ *               invalidIsPassed:
+ *                 value: { msg: "isPassed must be true or false" }
+ *               invalidGrade:
+ *                 value: { msg: "Grade must be between 0 and 100" }
+ *               alreadyPassed:
+ *                 value: { msg: "You already passed this course" }
+ *               oneFailed:
+ *                 value: { msg: "Only one failed attempt is allowed for this course" }
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: User not found or course not found
+ *       500:
+ *         description: Server error
  */
-router.put("/course/:courseId", protect, editCourse);
+router.patch("/course/:courseId", protect, editCourse);
 /**
  * @swagger
  * /user/course/{courseId}:

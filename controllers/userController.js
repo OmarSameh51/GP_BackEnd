@@ -37,6 +37,13 @@ const updateStudentNeo4jStats = async (user) => {
     await session.close();
   }
 };
+
+const {
+  createTookRelation,
+  deleteTookRelation,
+  updateIntendsRelation,
+} = require("../services/neo4jRelationService");
+
 const addCourse = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -121,6 +128,9 @@ const addCourse = async (req, res) => {
     user.gpa = result.gpa;
     user.totalCreditHours = result.totalCreditHours;
     await user.save();
+    if (isPassed) {
+      await createTookRelation(user.studentId, course.Code);
+    }
     await updateStudentNeo4jStats(user);
     res.json({
       msg: "Course added successfully",
@@ -199,6 +209,7 @@ const editCourse = async (req, res) => {
         msg: "Course not found",
       });
     }
+    const oldIsPassed = course.isPassed;
 
     // get same course attempts except current one
     const sameCourses = user.enrolledCourses.filter(
@@ -228,6 +239,13 @@ const editCourse = async (req, res) => {
     course.grade = grade;
     course.isPassed = isPassed;
     course.gradePoints = convertGradeToGPA(grade);
+    if (!oldIsPassed && isPassed) {
+      await createTookRelation(user.studentId, course.courseCode);
+    }
+
+    if (oldIsPassed && !isPassed) {
+      await deleteTookRelation(user.studentId, course.courseCode);
+    }
 
     // recalculate GPA
     const result = calculateGPA(user.enrolledCourses);
@@ -269,7 +287,10 @@ const deleteCourse = async (req, res) => {
         msg: "Course not found",
       });
     }
-
+    const wasPassed = course.isPassed;
+    if (wasPassed) {
+      await deleteTookRelation(user.studentId, course.courseCode);
+    }
     // remove course
     course.deleteOne();
 
@@ -330,6 +351,7 @@ const updatePreferredDepartment = async (req, res) => {
     user.preferredDepartment = preferredDepartment;
 
     await user.save();
+    await updateIntendsRelation(user.studentId, preferredDepartment);
     await updateStudentNeo4jStats(user);
 
     res.json({

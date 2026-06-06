@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const { driver } = require("../config/neo4j");
 const neo4j = require("neo4j-driver");
+const { deleteStudentNode } = require("../services/neo4jRelationService");
 
 const cleanNeo4jObject = (obj) => {
   return Object.fromEntries(
@@ -69,7 +70,11 @@ const deleteStudent = async (req, res) => {
       });
     }
 
+    // delete from MongoDB
     await User.deleteOne({ studentId });
+
+    // delete from Neo4j with all relationships
+    await deleteStudentNode(studentId);
 
     res.json({
       msg: "Student deleted successfully",
@@ -81,7 +86,6 @@ const deleteStudent = async (req, res) => {
     });
   }
 };
-
 const updateCourseProperties = async (req, res) => {
   const session = driver.session();
 

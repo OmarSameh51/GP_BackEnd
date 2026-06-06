@@ -4,8 +4,9 @@ const courseSchema = new mongoose.Schema({
   courseCode: String,
   courseName: String,
   creditHours: Number,
-  grade: Number, // max 100
-  gradePoints: Number, // GPA Points 4
+  grade: Number,
+  isPassed: Boolean,
+  gradePoints: Number,
 });
 
 const aiPlanSchema = new mongoose.Schema(
