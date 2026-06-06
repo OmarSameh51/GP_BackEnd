@@ -9,6 +9,7 @@ const {
   deleteCourse,
   updatePreferredDepartment,
   updateDepartment,
+  changePassword,
 } = require("../controllers/userController");
 /**
  * @swagger
@@ -458,4 +459,68 @@ router.get("/profile", protect, getProfile);
  *         description: Server error
  */
 router.patch("/department", protect, updateDepartment);
+
+/**
+ * @swagger
+ * /user/change-password:
+ *   patch:
+ *     summary: Change user password
+ *     description: Allows an authenticated user to change their password by providing their current password and a new password.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *               - confirmPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 example: "oldPass123"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "newPass123"
+ *               confirmPassword:
+ *                 type: string
+ *                 example: "newPass123"
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Validation error — one of the following
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               missingFields:
+ *                 value: { msg: "All fields are required" }
+ *               shortPassword:
+ *                 value: { msg: "Password must be at least 6 characters" }
+ *               samePassword:
+ *                 value: { msg: "New password must be different from current password" }
+ *               passwordMismatch:
+ *                 value: { msg: "Passwords do not match" }
+ *               incorrectPassword:
+ *                 value: { msg: "Current password is incorrect" }
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/change-password", protect, changePassword);
+
 module.exports = router;

@@ -8,6 +8,8 @@ const convertGradeToGPA = require("../utils/gradeConverter");
 
 const calculateGPA = require("../utils/calculateGPA");
 
+const bcrypt = require("bcrypt");
+
 const normalizeCourseCode = (courseCode) => {
   return courseCode.replace(/\s+/g, "").toUpperCase();
 };
@@ -418,6 +420,65 @@ const updateDepartment = async (req, res) => {
     });
   }
 };
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        msg: "All fields are required",
+      });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        msg: "Password must be at least 6 characters",
+      });
+    }
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        msg: "New password must be different from current password",
+      });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        msg: "Passwords do not match",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        msg: "Current password is incorrect",
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    await user.save();
+
+    res.json({
+      msg: "Password changed successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
 module.exports = {
   getProfile,
   addCourse,
@@ -425,4 +486,5 @@ module.exports = {
   deleteCourse,
   updatePreferredDepartment,
   updateDepartment,
+  changePassword,
 };
