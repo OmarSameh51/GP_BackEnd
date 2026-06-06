@@ -70,11 +70,8 @@ const deleteStudent = async (req, res) => {
       });
     }
 
-    // delete from MongoDB
-    await User.deleteOne({ studentId });
-
-    // delete from Neo4j with all relationships
-    await deleteStudentNode(studentId);
+    await deleteStudentNode(studentId); //Neo4j
+    await User.deleteOne({ studentId }); //Mongo
 
     res.json({
       msg: "Student deleted successfully",
