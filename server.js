@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const cors = require("cors");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
 const connectDB = require("./config/db");
@@ -8,6 +9,12 @@ const { connectNeo4j } = require("./config/neo4j");
 const adminRoutes = require("./routes/admin");
 const app = express();
 
+const allowedOrigins = [
+  process.env.CLIENT_SITE,
+  "http://localhost:3000",
+].filter(Boolean);
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 app.use(async (_req, _res, next) => {
