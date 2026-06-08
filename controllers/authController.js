@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const generateStudentId = require("../utils/generateStudentId");
 const { driver } = require("../config/neo4j");
 const { updateIntendsRelation } = require("../services/neo4jRelationService");
+const { sendVerificationEmail } = require("../services/emailService");
 // REGISTER
 exports.register = async (req, res) => {
   try {
@@ -85,6 +86,12 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+
+    const verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
     // generate ID
     const studentId = generateStudentId();
 
@@ -101,6 +108,9 @@ exports.register = async (req, res) => {
       preferredDepartment: finalPreferredDepartment,
       phoneNumber,
       role: "student",
+
+      emailVerificationCode: verificationCode,
+      emailVerificationExpires: verificationExpires,
     });
 
     await user.save();
@@ -140,6 +150,11 @@ exports.register = async (req, res) => {
       await session.close();
     }
     await updateIntendsRelation(user.studentId, user.preferredDepartment);
+    try {
+      await sendVerificationEmail(user.email, verificationCode);
+    } catch (emailErr) {
+      console.error("Verification email failed:", emailErr.message);
+    }
     res.status(201).json({
       msg: "User registered successfully",
       user: {
@@ -184,6 +199,59 @@ exports.login = async (req, res) => {
         lastName: user.lastName,
         role: user.role,
       },
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({
+        msg: "Email and code are required",
+      });
+    }
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        msg: "Email already verified",
+      });
+    }
+
+    if (user.emailVerificationCode !== code) {
+      return res.status(400).json({
+        msg: "Invalid verification code",
+      });
+    }
+
+    if (
+      !user.emailVerificationExpires ||
+      user.emailVerificationExpires < new Date()
+    ) {
+      return res.status(400).json({
+        msg: "Verification code expired",
+      });
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationCode = null;
+    user.emailVerificationExpires = null;
+
+    await user.save();
+
+    res.json({
+      msg: "Email verified successfully",
     });
   } catch (err) {
     res.status(500).json({

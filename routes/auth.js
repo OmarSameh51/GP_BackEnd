@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { register, login } = require("../controllers/authController");
+const {
+  register,
+  login,
+  verifyEmail,
+} = require("../controllers/authController");
 
 /**
  * @swagger
@@ -171,4 +175,53 @@ router.post("/register", register);
  */
 router.post("/login", login);
 
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verify user email
+ *     description: Verifies a user's email address using the verification code sent to their email.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "ahmed@example.com"
+ *               code:
+ *                 type: string
+ *                 example: "483921"
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Validation error — one of the following
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               alreadyVerified:
+ *                 value: { msg: "Email already verified" }
+ *               invalidCode:
+ *                 value: { msg: "Invalid verification code" }
+ *               expiredCode:
+ *                 value: { msg: "Verification code expired" }
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/verify-email", verifyEmail);
 module.exports = router;

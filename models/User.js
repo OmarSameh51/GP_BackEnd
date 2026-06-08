@@ -64,7 +64,18 @@ const userSchema = new mongoose.Schema(
         "Invalid email format",
       ],
     },
+    emailVerificationCode: {
+      type: String,
+    },
 
+    emailVerificationExpires: {
+      type: Date,
+    },
+
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
     role: {
       type: String,
       enum: ["student", "admin", "super_admin"],
