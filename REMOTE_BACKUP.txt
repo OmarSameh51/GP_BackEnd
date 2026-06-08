@@ -1,0 +1,5 @@
+Previous origin URL (saved 2026-06-08 before replacing):
+  https://github.com/sam3ma3/GP_BackEnd-main.git
+
+If you need to restore it, run from this folder:
+  git remote set-url origin https://github.com/sam3ma3/GP_BackEnd-main.git
