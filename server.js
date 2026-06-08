@@ -63,12 +63,16 @@ app.use(
 
 // Routes
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/public", require("./routes/public"));
 app.use("/api/user", require("./routes/user"));
 app.use("/api/admin", adminRoutes);
 app.use("/api/super-admin", require("./routes/superAdmin"));
 app.get("/", (req, res) => {
   res.send("API is running");
 });
+
+// Background jobs
+require("./jobs/guestCleanup").startGuestCleanupJob();
 
 // Error handler
 app.use((err, req, res, next) => {
