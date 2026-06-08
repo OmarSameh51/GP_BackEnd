@@ -24,6 +24,14 @@ exports.register = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ msg: "User already exists" });
 
+    const existingUsername = await User.findOne({ username });
+
+    if (existingUsername) {
+      return res.status(400).json({
+        msg: "Username already exists",
+      });
+    }
+
     //Year Validation
     if (![1, 2, 3, 4].includes(Number(academicYear))) {
       return res.status(400).json({
@@ -42,7 +50,7 @@ exports.register = async (req, res) => {
     // Year 1 & 2 must be General
     if (academicYear <= 2 && department !== "General") {
       return res.status(400).json({
-        msg: "Year 1 and 2 students must belong to General department",
+        msg: "Level 1 and 2 students must belong to General department",
       });
     }
 
@@ -70,7 +78,7 @@ exports.register = async (req, res) => {
     }
     if (academicYear >= 3 && department === "General") {
       return res.status(400).json({
-        msg: "Year 3 and 4 students cannot belong to General department",
+        msg: "Level 3 and 4 students cannot belong to General department",
       });
     }
     // hash password

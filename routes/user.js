@@ -233,7 +233,7 @@ router.delete("/course/:courseId", protect, deleteCourse);
 /**
  * @swagger
  * /user/preferred-department:
- *   put:
+ *   patch:
  *     summary: Update student's preferred department
  *     description: Allows authenticated students to update their preferred department. Only students can perform this action.
  *     tags:
@@ -310,7 +310,7 @@ router.delete("/course/:courseId", protect, deleteCourse);
  *                   type: string
  *                   example: Some unexpected error occurred
  */
-router.put("/preferred-department", protect, updatePreferredDepartment);
+router.patch("/preferred-department", protect, updatePreferredDepartment);
 /**
  * @swagger
  * /user/profile:
