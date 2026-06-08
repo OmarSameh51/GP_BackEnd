@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const generateStudentId = require("../utils/generateStudentId");
 const { driver } = require("../config/neo4j");
-
+const { updateIntendsRelation } = require("../services/neo4jRelationService");
 // REGISTER
 exports.register = async (req, res) => {
   try {
@@ -15,6 +15,7 @@ exports.register = async (req, res) => {
       password,
       academicYear,
       department,
+      preferredDepartment,
       phoneNumber,
     } = req.body;
 
@@ -23,6 +24,55 @@ exports.register = async (req, res) => {
     if (existingUser)
       return res.status(400).json({ msg: "User already exists" });
 
+    //Year Validation
+    if (![1, 2, 3, 4].includes(Number(academicYear))) {
+      return res.status(400).json({
+        msg: "Academic year must be between 1 and 4",
+      });
+    }
+
+    //Department Validation
+    const allowedAllDepartments = ["General", "AI", "CS", "IT", "IS"];
+
+    if (!allowedAllDepartments.includes(department)) {
+      return res.status(400).json({
+        msg: "Invalid department",
+      });
+    }
+    // Year 1 & 2 must be General
+    if (academicYear <= 2 && department !== "General") {
+      return res.status(400).json({
+        msg: "Year 1 and 2 students must belong to General department",
+      });
+    }
+
+    // Preferred department required for year 1 & 2
+    if (academicYear <= 2 && !preferredDepartment) {
+      return res.status(400).json({
+        msg: "Preferred department is required",
+      });
+    }
+    const allowedDepartments = ["AI", "CS", "IT", "IS"];
+    if (
+      preferredDepartment &&
+      !allowedDepartments.includes(preferredDepartment)
+    ) {
+      return res.status(400).json({
+        msg: "Invalid preferred department",
+      });
+    }
+    let finalPreferredDepartment;
+
+    if (academicYear <= 2) {
+      finalPreferredDepartment = preferredDepartment;
+    } else {
+      finalPreferredDepartment = department;
+    }
+    if (academicYear >= 3 && department === "General") {
+      return res.status(400).json({
+        msg: "Year 3 and 4 students cannot belong to General department",
+      });
+    }
     // hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -40,6 +90,7 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       academicYear,
       department,
+      preferredDepartment: finalPreferredDepartment,
       phoneNumber,
       role: "student",
     });
@@ -80,6 +131,7 @@ exports.register = async (req, res) => {
     } finally {
       await session.close();
     }
+    await updateIntendsRelation(user.studentId, user.preferredDepartment);
     res.status(201).json({
       msg: "User registered successfully",
       user: {

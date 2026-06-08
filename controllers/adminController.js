@@ -159,17 +159,17 @@ const updateCourseProperties = async (req, res) => {
 
     if (Required_Hours !== undefined) {
       updates.push("c.Required_Hours = $Required_Hours");
-      params.Required_Hours = Required_Hours;
+      params.Required_Hours = neo4j.int(Required_Hours);
     }
 
     if (Required_level !== undefined) {
       updates.push("c.Required_level = $Required_level");
-      params.Required_level = Required_level;
+      params.Required_level = neo4j.int(Required_level);
     }
 
     if (Semester !== undefined) {
       updates.push("c.Semester = $Semester");
-      params.Semester = Semester;
+      params.Semester = neo4j.int(Semester);
     }
 
     if (updates.length === 0) {

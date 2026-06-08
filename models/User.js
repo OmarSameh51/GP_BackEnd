@@ -80,16 +80,14 @@ const userSchema = new mongoose.Schema(
 
     department: {
       type: String,
+      enum: ["General", "AI", "CS", "IT", "IS"],
       required: function () {
         return this.role === "student";
       },
     },
     preferredDepartment: {
       type: String,
-      enum: ["AI", "CS", "IT", "IS", "General"],
-      default: function () {
-        return this.role === "student" ? "General" : undefined;
-      },
+      enum: ["AI", "CS", "IT", "IS"],
     },
     gpa: {
       type: Number,
