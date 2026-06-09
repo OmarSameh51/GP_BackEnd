@@ -180,7 +180,7 @@ const runGuestAdvisor = async ({
   };
 };
 
-const cleanupOrphanGuests = async (maxAgeMinutes = 60) => {
+const cleanupOrphanGuests = async (maxAgeMinutes = 30) => {
   const session = driver.session();
   try {
     const result = await session.run(
