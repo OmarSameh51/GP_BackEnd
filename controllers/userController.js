@@ -348,7 +348,16 @@ const updatePreferredDepartment = async (req, res) => {
         msg: "Only students can set preferred department",
       });
     }
-
+    if (user.preferredDepartment === preferredDepartment) {
+      return res.status(400).json({
+        msg: "Preferred department is already set to this value",
+      });
+    }
+    if (user.academicYear >= 3) {
+      return res.status(403).json({
+        msg: "Only year 1 and 2 students can change preferred department",
+      });
+    }
     // update
     user.preferredDepartment = preferredDepartment;
 
@@ -372,7 +381,7 @@ const updateDepartment = async (req, res) => {
     const userId = req.user.id;
     const { department } = req.body;
 
-    const allowedDepartments = ["AI", "CS", "IT", "IS", "General"];
+    const allowedDepartments = ["AI", "CS", "IT", "IS"];
 
     // validation
     if (!department) {
@@ -400,13 +409,30 @@ const updateDepartment = async (req, res) => {
         msg: "Only students can update department",
       });
     }
+    if (user.academicYear <= 2) {
+      return res.status(403).json({
+        msg: "Level 1 and 2 students cannot change department",
+      });
+    }
 
+    if (user.academicYear === 4) {
+      return res.status(403).json({
+        msg: "Level 4 students cannot change department",
+      });
+    }
+
+    if (user.department === department) {
+      return res.status(400).json({
+        msg: "Department is already set to this value",
+      });
+    }
     // update mongo
     user.department = department;
-
+    user.preferredDepartment = department;
     await user.save();
 
     // update neo4j
+    await updateIntendsRelation(user.studentId, department);
     await updateStudentNeo4jStats(user);
 
     res.json({
