@@ -1,33 +1,9 @@
-const nodemailer = require("nodemailer");
+const brevo = require("@getbrevo/brevo");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-});
+console.log("BREVO KEYS:");
+console.log(Object.keys(brevo));
 
-const sendVerificationEmail = async (email, code) => {
-  console.log("Sending email to:", email);
+console.log("BREVO.Brevo KEYS:");
+console.log(Object.keys(brevo.Brevo));
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verify Your Email",
-    html: `
-      <h2>Email Verification</h2>
-      <p>Your verification code is:</p>
-      <h1>${code}</h1>
-      <p>This code expires in 10 minutes.</p>
-    `,
-  });
-
-  console.log("Email sent successfully");
-};
-
-module.exports = {
-  sendVerificationEmail,
-};
+module.exports = {};
