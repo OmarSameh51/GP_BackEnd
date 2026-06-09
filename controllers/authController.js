@@ -153,7 +153,8 @@ exports.register = async (req, res) => {
     try {
       await sendVerificationEmail(user.email, verificationCode);
     } catch (emailErr) {
-      console.error("Verification email failed:", emailErr.message);
+      console.error("Verification email failed:");
+      console.error(emailErr);
     }
     res.status(201).json({
       msg: "User registered successfully",
