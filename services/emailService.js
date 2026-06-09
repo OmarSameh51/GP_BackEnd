@@ -9,9 +9,18 @@ const transporter = nodemailer.createTransport({
     pass: process.env.BREVO_PASS,
   },
 });
-
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("SMTP ERROR:");
+    console.error(error);
+  } else {
+    console.log("SMTP READY");
+  }
+});
 const sendVerificationEmail = async (email, code) => {
   console.log("Sending email to:", email);
+  console.log("BREVO_USER:", process.env.BREVO_USER);
+  console.log("EMAIL_USER:", process.env.EMAIL_USER);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
