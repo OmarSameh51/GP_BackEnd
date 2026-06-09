@@ -2,6 +2,8 @@ const { driver } = require("../config/neo4j");
 
 const User = require("../models/User");
 
+const { getAnnouncements } = require("./publicController");
+
 const { getCourseFromNeo4j } = require("../services/courseService");
 
 const convertGradeToGPA = require("../utils/gradeConverter");
@@ -513,4 +515,5 @@ module.exports = {
   updatePreferredDepartment,
   updateDepartment,
   changePassword,
+  getAnnouncements,
 };

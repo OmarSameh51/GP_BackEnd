@@ -162,6 +162,10 @@ router.get("/courses/active", protect, adminOnly, getActiveCourses);
  *                 type: integer
  *                 enum: [1, 2]
  *                 example: 1
+ *               Credits:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 3
  *     responses:
  *       200:
  *         description: Course updated successfully

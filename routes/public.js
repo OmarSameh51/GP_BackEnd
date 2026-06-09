@@ -7,6 +7,7 @@ const {
   getCourseRelations,
   getUnlockedCourses,
   getAcademicAdvice,
+  getAnnouncements,
 } = require("../controllers/publicController");
 
 /**
@@ -157,5 +158,28 @@ router.get("/course/:courseCode/unlocks", getUnlockedCourses);
  *         description: Server error
  */
 router.post("/ai/advise", getAcademicAdvice);
+
+/**
+ * @swagger
+ * /public/announcements:
+ *   get:
+ *     summary: Get recent course update announcements
+ *     description: Public read-only endpoint. Returns the most recent course change announcements (course created, course properties updated, prerequisite added/removed) recorded by admins, newest first. Supports ?limit (max 100, default 20) and ?offset (default 0).
+ *     tags: [Public]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *         example: 20
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, minimum: 0, default: 0 }
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Announcements retrieved successfully
+ *       500: { description: Server error }
+ */
+router.get("/announcements", getAnnouncements);
 
 module.exports = router;

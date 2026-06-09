@@ -2,6 +2,7 @@ const User = require("../models/User");
 const { driver } = require("../config/neo4j");
 const neo4j = require("neo4j-driver");
 const { deleteStudentNode } = require("../services/neo4jRelationService");
+const { recordCourseUpdate } = require("../services/updateService");
 
 const cleanNeo4jObject = (obj) => {
   return Object.fromEntries(
@@ -88,7 +89,8 @@ const updateCourseProperties = async (req, res) => {
 
   try {
     const normalizedCourseCode = normalizeCourseCode(req.params.courseCode);
-    const { isActive, Required_Hours, Required_level, Semester } = req.body;
+    const { isActive, Required_Hours, Required_level, Semester, Credits } =
+      req.body;
 
     // validation
 
@@ -132,6 +134,18 @@ const updateCourseProperties = async (req, res) => {
         });
       }
     }
+
+    if (Credits !== undefined) {
+      if (
+        typeof Credits !== "number" ||
+        !Number.isInteger(Credits) ||
+        Credits <= 0
+      ) {
+        return res.status(400).json({
+          msg: "Credits must be a positive integer",
+        });
+      }
+    }
     // check if course exists
     const existingCourse = await session.run(
       `
@@ -146,6 +160,10 @@ const updateCourseProperties = async (req, res) => {
         msg: "Course not found",
       });
     }
+
+    const oldCourseProps = cleanNeo4jObject(
+      existingCourse.records[0].get("c").properties,
+    );
 
     // build dynamic SET query
     let updates = [];
@@ -172,6 +190,11 @@ const updateCourseProperties = async (req, res) => {
       params.Semester = neo4j.int(Semester);
     }
 
+    if (Credits !== undefined) {
+      updates.push("c.Credits = $Credits");
+      params.Credits = neo4j.int(Credits);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({
         msg: "No fields provided to update",
@@ -192,6 +215,51 @@ const updateCourseProperties = async (req, res) => {
 
     // clean neo4j integers
     const course = cleanNeo4jObject(rawCourse);
+
+    // build diff for the announcement
+    const newProps = course;
+    const changes = {};
+    for (const key of Object.keys(params)) {
+      if (key === "courseCode") continue;
+      if (oldCourseProps[key] !== newProps[key]) {
+        changes[key] = { from: oldCourseProps[key], to: newProps[key] };
+      }
+    }
+
+    // emit a special, attention-grabbing announcement if the course was
+    // activated or deactivated (so it stands out in the feed)
+    if (changes.isActive) {
+      const activated = changes.isActive.to === true;
+      await recordCourseUpdate(session, {
+        type: activated ? "COURSE_ACTIVATED" : "COURSE_DEACTIVATED",
+        courseCode: normalizedCourseCode,
+        summary: activated
+          ? `Course ${normalizedCourseCode} is now ACTIVE and available to students`
+          : `Course ${normalizedCourseCode} has been DEACTIVATED and is no longer available to students`,
+        details: {
+          courseCode: normalizedCourseCode,
+          changes: { isActive: changes.isActive },
+        },
+        admin: req.user,
+      });
+    }
+
+    // always also log the generic COURSE_UPDATED with the full diff,
+    // unless the only change was isActive (already covered above)
+    const nonActiveChanges = { ...changes };
+    delete nonActiveChanges.isActive;
+    if (Object.keys(nonActiveChanges).length > 0) {
+      const summaryParts = Object.entries(nonActiveChanges)
+        .map(([k, v]) => `${k}: ${v.from} → ${v.to}`)
+        .join("; ");
+      await recordCourseUpdate(session, {
+        type: "COURSE_UPDATED",
+        courseCode: normalizedCourseCode,
+        summary: `Course ${normalizedCourseCode} updated — ${summaryParts}`,
+        details: { courseCode: normalizedCourseCode, changes: nonActiveChanges },
+        admin: req.user,
+      });
+    }
 
     res.json({
       msg: "Course updated successfully",
@@ -390,6 +458,14 @@ const addPrerequisite = async (req, res) => {
       },
     );
 
+    await recordCourseUpdate(session, {
+      type: "PREREQUISITE_ADDED",
+      courseCode,
+      summary: `${courseCode} now requires ${prerequisiteCode}`,
+      details: { courseCode, prerequisiteCode },
+      admin: req.user,
+    });
+
     res.json({
       msg: `${courseCode} now requires ${prerequisiteCode}`,
     });
@@ -438,6 +514,14 @@ const removePrerequisite = async (req, res) => {
         msg: "Relationship not found",
       });
     }
+
+    await recordCourseUpdate(session, {
+      type: "PREREQUISITE_REMOVED",
+      courseCode,
+      summary: `${prerequisiteCode} removed from prerequisites of ${courseCode}`,
+      details: { courseCode, prerequisiteCode },
+      admin: req.user,
+    });
 
     res.json({
       msg: `${prerequisiteCode} removed from prerequisites of ${courseCode}`,
@@ -599,6 +683,22 @@ const addCourse = async (req, res) => {
 
     const rawCourse = result.records[0].get("c").properties;
     const course = cleanNeo4jObject(rawCourse);
+
+    await recordCourseUpdate(session, {
+      type: "COURSE_CREATED",
+      courseCode: Code,
+      summary: `New course added: ${Code} (${name})`,
+      details: {
+        Code,
+        name,
+        Credits,
+        Semester,
+        Required_level,
+        Required_Hours,
+        isActive,
+      },
+      admin: req.user,
+    });
 
     res.status(201).json({
       msg: "Course added successfully",

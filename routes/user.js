@@ -10,6 +10,7 @@ const {
   updatePreferredDepartment,
   updateDepartment,
   changePassword,
+  getAnnouncements,
 } = require("../controllers/userController");
 /**
  * @swagger
@@ -522,5 +523,7 @@ router.patch("/department", protect, updateDepartment);
  *         description: Server error
  */
 router.patch("/change-password", protect, changePassword);
+
+router.get("/announcements", protect, getAnnouncements);
 
 module.exports = router;

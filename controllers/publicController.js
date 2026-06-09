@@ -196,6 +196,65 @@ const getUnlockedCourses = async (req, res) => {
   }
 };
 
+const safeParseJson = (s) => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return {};
+  }
+};
+
+const getAnnouncements = async (req, res) => {
+  const session = driver.session();
+
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const result = await session.run(
+      `
+      MATCH (u:CourseUpdate)
+      RETURN u
+      ORDER BY u.createdAt DESC
+      SKIP $offset
+      LIMIT $limit
+      `,
+      { offset: neo4j.int(offset), limit: neo4j.int(limit) },
+    );
+
+    const announcements = result.records.map((record) => {
+      const props = record.get("u").properties;
+      const p = cleanNeo4jObject(props);
+      return {
+        id: p.id,
+        type: p.type,
+        courseCode: p.courseCode,
+        summary: p.summary,
+        details: safeParseJson(p.details),
+        adminId: p.adminId,
+        adminUsername: p.adminUsername,
+        createdAt: props.createdAt && props.createdAt.toString
+          ? props.createdAt.toString()
+          : p.createdAt,
+      };
+    });
+
+    res.json({
+      count: announcements.length,
+      offset,
+      limit,
+      announcements,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  } finally {
+    await session.close();
+  }
+};
+
 const ALLOWED_DEPARTMENTS = ["AI", "CS", "IT", "IS", "General"];
 
 const getAcademicAdvice = async (req, res) => {
@@ -296,4 +355,5 @@ module.exports = {
   getCourseRelations,
   getUnlockedCourses,
   getAcademicAdvice,
+  getAnnouncements,
 };
