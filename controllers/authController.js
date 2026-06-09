@@ -187,7 +187,13 @@ exports.login = async (req, res) => {
     // 2) check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
-
+    //2.5) check if verified
+    if (user.role === "student" && !user.isEmailVerified) {
+      return res.status(403).json({
+        msg: "Please verify your email first",
+        isEmailVerified: false,
+      });
+    }
     // 3) generate token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "12h",
@@ -202,6 +208,7 @@ exports.login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         role: user.role,
+        isEmailVerified: user.isEmailVerified,
       },
     });
   } catch (err) {
@@ -352,6 +359,46 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: error.message,
+    });
+  }
+};
+exports.resendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        msg: "Email already verified",
+      });
+    }
+
+    const verificationCode = Math.floor(
+      100000 + Math.random() * 900000,
+    ).toString();
+
+    const verificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.emailVerificationCode = verificationCode;
+    user.emailVerificationExpires = verificationExpires;
+
+    await user.save();
+
+    await sendVerificationEmail(user.email, verificationCode);
+
+    res.status(200).json({
+      msg: "Verification code sent successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      msg: error.message,
     });
   }
 };

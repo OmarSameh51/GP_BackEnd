@@ -7,6 +7,7 @@ const {
   forgotPassword,
   resetPassword,
   verifyResetCode,
+  resendVerificationCode,
 } = require("../controllers/authController");
 
 /**
@@ -330,4 +331,35 @@ router.post("/verify-reset-code", verifyResetCode);
  */
 router.post("/reset-password", resetPassword);
 
+/**
+ * @swagger
+ * /auth/resend-verification-code:
+ *   post:
+ *     summary: Resend email verification code
+ *     description: Sends a new 6-digit verification code to the user's email. The code expires after 10 minutes.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "ahmed@example.com"
+ *     responses:
+ *       200:
+ *         description: Verification code sent successfully
+ *       400:
+ *         description: Email already verified
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/resend-verification-code", resendVerificationCode);
 module.exports = router;
