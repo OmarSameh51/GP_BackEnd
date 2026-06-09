@@ -18,12 +18,6 @@ const allowedOrigins = [
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
-app.use(async (_req, _res, next) => {
-  await connectDB();
-  await connectNeo4j();
-  next();
-});
-
 // Swagger
 const swaggerOptions = {
   definition: {
@@ -87,9 +81,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  (async () => {
+    await connectDB();
+    await connectNeo4j();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })();
 }
 
 module.exports = app;
