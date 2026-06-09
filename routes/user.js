@@ -524,6 +524,32 @@ router.patch("/department", protect, updateDepartment);
  */
 router.patch("/change-password", protect, changePassword);
 
+/**
+ * @swagger
+ * /user/announcements:
+ *   get:
+ *     summary: Get recent course update announcements
+ *     description: Authenticated endpoint. Returns the most recent course change announcements (course created, course properties updated, course activated/deactivated, prerequisite added/removed) recorded by admins, newest first. Supports ?limit (max 100, default 20) and ?offset (default 0).
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *         example: 20
+ *       - in: query
+ *         name: offset
+ *         schema: { type: integer, minimum: 0, default: 0 }
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Announcements retrieved successfully
+ *       401:
+ *         description: Unauthorized — token missing or invalid
+ *       500:
+ *         description: Server error
+ */
 router.get("/announcements", protect, getAnnouncements);
 
 module.exports = router;

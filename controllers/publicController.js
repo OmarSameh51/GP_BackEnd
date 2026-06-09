@@ -196,48 +196,29 @@ const getUnlockedCourses = async (req, res) => {
   }
 };
 
-const safeParseJson = (s) => {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return {};
-  }
-};
+const Announcement = require("../models/Announcement");
 
 const getAnnouncements = async (req, res) => {
-  const session = driver.session();
-
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
-    const result = await session.run(
-      `
-      MATCH (u:CourseUpdate)
-      RETURN u
-      ORDER BY u.createdAt DESC
-      SKIP $offset
-      LIMIT $limit
-      `,
-      { offset: neo4j.int(offset), limit: neo4j.int(limit) },
-    );
+    const docs = await Announcement.find()
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean();
 
-    const announcements = result.records.map((record) => {
-      const props = record.get("u").properties;
-      const p = cleanNeo4jObject(props);
-      return {
-        id: p.id,
-        type: p.type,
-        courseCode: p.courseCode,
-        summary: p.summary,
-        details: safeParseJson(p.details),
-        adminId: p.adminId,
-        adminUsername: p.adminUsername,
-        createdAt: props.createdAt && props.createdAt.toString
-          ? props.createdAt.toString()
-          : p.createdAt,
-      };
-    });
+    const announcements = docs.map((d) => ({
+      id: d._id.toString(),
+      type: d.type,
+      courseCode: d.courseCode,
+      summary: d.summary,
+      details: d.details,
+      adminId: d.adminId,
+      adminUsername: d.adminUsername,
+      createdAt: d.createdAt,
+    }));
 
     res.json({
       count: announcements.length,
@@ -250,8 +231,6 @@ const getAnnouncements = async (req, res) => {
       msg: "Server error",
       error: err.message,
     });
-  } finally {
-    await session.close();
   }
 };
 

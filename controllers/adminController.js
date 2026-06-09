@@ -2,7 +2,7 @@ const User = require("../models/User");
 const { driver } = require("../config/neo4j");
 const neo4j = require("neo4j-driver");
 const { deleteStudentNode } = require("../services/neo4jRelationService");
-const { recordCourseUpdate } = require("../services/updateService");
+const { recordAnnouncement } = require("../services/announcementService");
 
 const cleanNeo4jObject = (obj) => {
   return Object.fromEntries(
@@ -230,7 +230,7 @@ const updateCourseProperties = async (req, res) => {
     // activated or deactivated (so it stands out in the feed)
     if (changes.isActive) {
       const activated = changes.isActive.to === true;
-      await recordCourseUpdate(session, {
+      await recordAnnouncement({
         type: activated ? "COURSE_ACTIVATED" : "COURSE_DEACTIVATED",
         courseCode: normalizedCourseCode,
         summary: activated
@@ -252,7 +252,7 @@ const updateCourseProperties = async (req, res) => {
       const summaryParts = Object.entries(nonActiveChanges)
         .map(([k, v]) => `${k}: ${v.from} → ${v.to}`)
         .join("; ");
-      await recordCourseUpdate(session, {
+      await recordAnnouncement({
         type: "COURSE_UPDATED",
         courseCode: normalizedCourseCode,
         summary: `Course ${normalizedCourseCode} updated — ${summaryParts}`,
@@ -458,7 +458,7 @@ const addPrerequisite = async (req, res) => {
       },
     );
 
-    await recordCourseUpdate(session, {
+    await recordAnnouncement({
       type: "PREREQUISITE_ADDED",
       courseCode,
       summary: `${courseCode} now requires ${prerequisiteCode}`,
@@ -515,7 +515,7 @@ const removePrerequisite = async (req, res) => {
       });
     }
 
-    await recordCourseUpdate(session, {
+    await recordAnnouncement({
       type: "PREREQUISITE_REMOVED",
       courseCode,
       summary: `${prerequisiteCode} removed from prerequisites of ${courseCode}`,
@@ -684,7 +684,7 @@ const addCourse = async (req, res) => {
     const rawCourse = result.records[0].get("c").properties;
     const course = cleanNeo4jObject(rawCourse);
 
-    await recordCourseUpdate(session, {
+    await recordAnnouncement({
       type: "COURSE_CREATED",
       courseCode: Code,
       summary: `New course added: ${Code} (${name})`,
