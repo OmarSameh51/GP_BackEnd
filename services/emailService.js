@@ -1,42 +1,45 @@
-const nodemailer = require("nodemailer");
+const brevo = require("@getbrevo/brevo");
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-});
+const apiInstance = new brevo.TransactionalEmailsApi();
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("SMTP ERROR:");
-    console.error(error);
-  } else {
-    console.log("SMTP READY");
-  }
-});
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY,
+);
 
 const sendVerificationEmail = async (email, code) => {
   console.log("Sending email to:", email);
-  console.log("BREVO_USER:", process.env.BREVO_USER);
-  console.log("EMAIL_USER:", process.env.EMAIL_USER);
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: "Verify Your Email",
-    html: `
-      <h2>Email Verification</h2>
-      <p>Your verification code is:</p>
-      <h1>${code}</h1>
-      <p>This code expires in 10 minutes.</p>
-    `,
-  });
+  try {
+    const result = await apiInstance.sendTransacEmail({
+      sender: {
+        email: process.env.EMAIL_USER,
+        name: "Academic Advisor",
+      },
 
-  console.log("Email sent successfully");
+      to: [
+        {
+          email: email,
+        },
+      ],
+
+      subject: "Verify Your Email",
+
+      htmlContent: `
+        <h2>Email Verification</h2>
+        <p>Your verification code is:</p>
+        <h1>${code}</h1>
+        <p>This code expires in 10 minutes.</p>
+      `,
+    });
+
+    console.log("Email sent successfully");
+    console.log(result);
+  } catch (error) {
+    console.error("BREVO ERROR:");
+    console.error(error);
+    throw error;
+  }
 };
 
 module.exports = {
