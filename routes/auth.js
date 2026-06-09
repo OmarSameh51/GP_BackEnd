@@ -4,6 +4,9 @@ const {
   register,
   login,
   verifyEmail,
+  forgotPassword,
+  resetPassword,
+  verifyResetCode,
 } = require("../controllers/authController");
 
 /**
@@ -224,4 +227,107 @@ router.post("/login", login);
  *         description: Server error
  */
 router.post("/verify-email", verifyEmail);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset code
+ *     description: Sends a 6-digit password reset code to the user's email. The code expires after 10 minutes.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "ahmed@example.com"
+ *     responses:
+ *       200:
+ *         description: Reset code sent successfully
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @swagger
+ * /auth/verify-reset-code:
+ *   post:
+ *     summary: Verify password reset code
+ *     description: Verifies the 6-digit reset code sent to the user's email. The code must not be expired.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "ahmed@example.com"
+ *               code:
+ *                 type: string
+ *                 example: "483921"
+ *     responses:
+ *       200:
+ *         description: Code verified successfully
+ *       400:
+ *         description: Invalid or expired code
+ *       500:
+ *         description: Server error
+ */
+router.post("/verify-reset-code", verifyResetCode);
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password using code
+ *     description: Resets the user's password using the verified reset code. The code must not be expired.
+ *     tags:
+ *       - Auth
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - code
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "ahmed@example.com"
+ *               code:
+ *                 type: string
+ *                 example: "483921"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "newPass123"
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *       400:
+ *         description: Invalid or expired code
+ *       500:
+ *         description: Server error
+ */
+router.post("/reset-password", resetPassword);
+
 module.exports = router;
