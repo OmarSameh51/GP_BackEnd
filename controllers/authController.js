@@ -188,12 +188,12 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: "Invalid credentials" });
     //2.5) check if verified
-    if (user.role === "student" && !user.isEmailVerified) {
-      return res.status(403).json({
-        msg: "Please verify your email first",
-        isEmailVerified: false,
-      });
-    }
+    // if (user.role === "student" && !user.isEmailVerified) {
+    //   return res.status(403).json({
+    //     msg: "Please verify your email first",
+    //     isEmailVerified: false,
+    //   });
+    // }
     // 3) generate token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "12h",
