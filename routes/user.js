@@ -11,6 +11,14 @@ const {
   updateDepartment,
   changePassword,
   getAnnouncements,
+  generateAIPlan,
+  generateAIRoadmap,
+  forecastGPA,
+  predictGrade,
+  createSummary,
+  listSummaries,
+  getSummary,
+  deleteSummary,
   updateAcademicYear,
 } = require("../controllers/userController");
 /**
@@ -552,6 +560,235 @@ router.patch("/change-password", protect, changePassword);
  *         description: Server error
  */
 router.get("/announcements", protect, getAnnouncements);
+
+/**
+ * @swagger
+ * /user/ai-plan/generate:
+ *   post:
+ *     summary: Generate an AI-powered course plan for the student
+ *     description: Calls the GP_AI advisor service, persists the returned plan to `User.AI_plan`, and returns the full response (including notes and remainingHoursToGraduate). Student role only.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: AI plan generated and saved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 plan:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       courseCode: { type: string }
+ *                       courseName: { type: string }
+ *                       creditHours: { type: number }
+ *                 notes: { type: string }
+ *                 totalSuggestedCredits: { type: number }
+ *                 remainingHoursToGraduate: { type: number }
+ *                 currentGPA: { type: number }
+ *                 candidatesConsidered: { type: number }
+ *                 aiUsed: { type: boolean }
+ *       401: { description: Unauthorized }
+ *       403: { description: Only students can generate a plan }
+ *       404: { description: User not found }
+ *       502: { description: AI advisor unavailable }
+ */
+router.post("/ai-plan/generate", protect, generateAIPlan);
+
+/**
+ * @swagger
+ * /user/ai-plan/roadmap:
+ *   post:
+ *     summary: Generate a semester-by-semester roadmap to graduation
+ *     description: Calls the GP_AI advisor service, which simulates every remaining semester (prerequisites unlock term by term, semester offerings and credit caps respected) until the department's required hours are covered. The roadmap is returned transiently and is not persisted. Student role only.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               semester:
+ *                 type: integer
+ *                 enum: [1, 2]
+ *                 description: The semester the plan starts from (defaults to 1)
+ *     responses:
+ *       200:
+ *         description: Roadmap generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 terms:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       academicYear: { type: number }
+ *                       semester: { type: number }
+ *                       credits: { type: number }
+ *                       courses:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             courseCode: { type: string }
+ *                             courseName: { type: string }
+ *                             creditHours: { type: number }
+ *                 totalPlannedCredits: { type: number }
+ *                 remainingHoursToGraduate: { type: number }
+ *                 remainingAfterPlan: { type: number }
+ *                 currentGPA: { type: number }
+ *                 notes: { type: string }
+ *       401: { description: Unauthorized }
+ *       403: { description: Only students can generate a roadmap }
+ *       404: { description: User not found }
+ *       502: { description: AI advisor unavailable }
+ */
+router.post("/ai-plan/roadmap", protect, generateAIRoadmap);
+
+/**
+ * @swagger
+ * /user/gpa-forecast:
+ *   post:
+ *     summary: Forecast the student's graduation GPA
+ *     description: Calls the GP_AI service, which runs a RandomForestRegressor trained on student course histories to predict the GPA the student will likely graduate with, based on the courses they have taken and how many credit hours remain.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Forecast generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 forecastGPA: { type: number }
+ *                 currentGPA: { type: number }
+ *                 completedCredits: { type: number }
+ *                 remainingCredits: { type: number }
+ *                 sampleSize: { type: number }
+ *                 aiUsed: { type: boolean }
+ *       401: { description: Unauthorized }
+ *       403: { description: Only students can forecast a GPA }
+ *       404: { description: Student not found or not enough course history }
+ *       502: { description: Forecast service unavailable }
+ */
+router.post("/gpa-forecast", protect, forecastGPA);
+
+/**
+ * @swagger
+ * /user/grade-prediction:
+ *   post:
+ *     summary: Predict a course's final-exam score from internal marks
+ *     description: Sends the coursework and midterm marks (with each component's max, since mark distributions differ per course) to the GP_AI service, where a RandomForestRegressor predicts the final-exam score out of the remaining marks, the projected course total out of 100, and the resulting letter grade.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [coursework, midterm]
+ *             properties:
+ *               coursework: { type: number, minimum: 0, example: 22 }
+ *               midterm: { type: number, minimum: 0, example: 18 }
+ *               courseworkMax: { type: number, default: 25, example: 30 }
+ *               midtermMax: { type: number, default: 25, example: 20 }
+ *     responses:
+ *       200:
+ *         description: Prediction generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 predictedFinal: { type: number }
+ *                 finalMax: { type: number }
+ *                 predictedTotal: { type: number }
+ *                 letter: { type: string }
+ *                 gradePoints: { type: number }
+ *                 passLikely: { type: boolean }
+ *       400: { description: Invalid coursework or midterm value }
+ *       401: { description: Unauthorized }
+ *       502: { description: Prediction service unavailable }
+ */
+router.post("/grade-prediction", protect, predictGrade);
+
+/**
+ * @swagger
+ * /user/summaries:
+ *   post:
+ *     summary: Summarize a lecture text with AI and save it
+ *     description: Sends the provided lecture text to the GP_AI service, stores the generated summary along with the given title, and returns the saved record.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, text]
+ *             properties:
+ *               title: { type: string, example: "Lecture 3 - Operating Systems" }
+ *               text: { type: string, description: "Raw lecture text to summarize" }
+ *     responses:
+ *       201:
+ *         description: Summary generated and saved
+ *       400: { description: Title or text missing }
+ *       401: { description: Unauthorized }
+ *       502: { description: AI summarization unavailable }
+ *   get:
+ *     summary: List the student's saved lecture summaries
+ *     description: Returns all saved summaries for the logged-in user, without the full lecture/summary text.
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: List of summaries }
+ *       401: { description: Unauthorized }
+ */
+router.post("/summaries", protect, createSummary);
+router.get("/summaries", protect, listSummaries);
+
+/**
+ * @swagger
+ * /user/summaries/{id}:
+ *   get:
+ *     summary: Get a single saved lecture summary
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Summary found }
+ *       404: { description: Summary not found }
+ *   delete:
+ *     summary: Delete a saved lecture summary
+ *     tags: [User]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Summary deleted }
+ *       404: { description: Summary not found }
+ */
+router.get("/summaries/:id", protect, getSummary);
+router.delete("/summaries/:id", protect, deleteSummary);
+
 /**
  * @swagger
  * /user/academic-year:

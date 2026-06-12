@@ -1,6 +1,7 @@
 const { driver } = require("../config/neo4j");
 
 const User = require("../models/User");
+const Summary = require("../models/Summary");
 
 const { getAnnouncements } = require("./publicController");
 
@@ -11,6 +12,8 @@ const convertGradeToGPA = require("../utils/gradeConverter");
 const calculateGPA = require("../utils/calculateGPA");
 
 const bcrypt = require("bcrypt");
+
+const aiAdvisorService = require("../services/aiAdvisorService");
 
 const normalizeCourseCode = (courseCode) => {
   return courseCode.replace(/\s+/g, "").toUpperCase();
@@ -507,6 +510,202 @@ const changePassword = async (req, res) => {
     });
   }
 };
+const generateAIPlan = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (user.role !== "student") {
+      return res
+        .status(403)
+        .json({ msg: "Only students can generate an AI plan" });
+    }
+
+    const semesterRaw = req.body?.semester;
+    const semester =
+      semesterRaw === 1 || semesterRaw === 2 ? semesterRaw : undefined;
+    const result = await aiAdvisorService.getStudentAdvice(user.studentId, {
+      semester,
+    });
+
+    user.AI_plan = {
+      plan: (result.plan || []).map(
+        ({ courseCode, courseName, creditHours }) => ({
+          courseCode,
+          courseName,
+          creditHours,
+        }),
+      ),
+    };
+    await user.save();
+
+    res.json(result);
+  } catch (err) {
+    console.error("generateAIPlan failed:", err.message);
+    const status = err.response?.status === 404 ? 404 : 502;
+    res.status(status).json({
+      msg: "AI advisor unavailable",
+      error: err.response?.data?.detail || err.message,
+    });
+  }
+};
+
+const generateAIRoadmap = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (user.role !== "student") {
+      return res
+        .status(403)
+        .json({ msg: "Only students can generate a roadmap" });
+    }
+
+    const semesterRaw = req.body?.semester;
+    const semester =
+      semesterRaw === 1 || semesterRaw === 2 ? semesterRaw : undefined;
+    const result = await aiAdvisorService.getStudentRoadmap(user.studentId, {
+      semester,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error("generateAIRoadmap failed:", err.message);
+    const status = err.response?.status === 404 ? 404 : 502;
+    res.status(status).json({
+      msg: "AI advisor unavailable",
+      error: err.response?.data?.detail || err.message,
+    });
+  }
+};
+
+const forecastGPA = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (user.role !== "student") {
+      return res.status(403).json({ msg: "Only students can forecast a GPA" });
+    }
+
+    const result = await aiAdvisorService.getGpaForecast(user.studentId);
+    res.json(result);
+  } catch (err) {
+    console.error("forecastGPA failed:", err.message);
+    const status = err.response?.status === 404 ? 404 : 502;
+    res.status(status).json({
+      msg: "GPA forecast unavailable",
+      error: err.response?.data?.detail || err.message,
+    });
+  }
+};
+
+const predictGrade = async (req, res) => {
+  try {
+    const coursework = Number(req.body?.coursework);
+    const midterm = Number(req.body?.midterm);
+    const courseworkMax = Number(req.body?.courseworkMax ?? 25);
+    const midtermMax = Number(req.body?.midtermMax ?? 25);
+
+    if (
+      [coursework, midterm, courseworkMax, midtermMax].some(Number.isNaN) ||
+      courseworkMax <= 0 ||
+      midtermMax <= 0 ||
+      coursework < 0 ||
+      coursework > courseworkMax ||
+      midterm < 0 ||
+      midterm > midtermMax
+    ) {
+      return res.status(400).json({
+        msg: "coursework and midterm must be between 0 and their respective max marks",
+      });
+    }
+    if (courseworkMax + midtermMax >= 100) {
+      return res.status(400).json({
+        msg: "coursework max + midterm max must be under 100 to leave marks for the final exam",
+      });
+    }
+
+    const result = await aiAdvisorService.predictGrade({
+      coursework,
+      midterm,
+      courseworkMax,
+      midtermMax,
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("predictGrade failed:", err.message);
+    res.status(502).json({
+      msg: "Grade prediction unavailable",
+      error: err.response?.data?.detail || err.message,
+    });
+  }
+};
+
+const createSummary = async (req, res) => {
+  try {
+    const { title, text } = req.body || {};
+    if (!title || !title.trim()) {
+      return res.status(400).json({ msg: "Title is required" });
+    }
+    if (!text || !text.trim()) {
+      return res.status(400).json({ msg: "Lecture text is required" });
+    }
+
+    const result = await aiAdvisorService.summarizeText(text);
+
+    const summary = await Summary.create({
+      user: req.user.id,
+      title: title.trim(),
+      lectureText: text,
+      summaryText: result.summary,
+    });
+
+    res.status(201).json(summary);
+  } catch (err) {
+    console.error("createSummary failed:", err.message);
+    const status = err.response?.status === 404 ? 404 : 502;
+    res.status(status).json({
+      msg: "AI summarization unavailable",
+      error: err.response?.data?.detail || err.message,
+    });
+  }
+};
+
+const listSummaries = async (req, res) => {
+  try {
+    const summaries = await Summary.find({ user: req.user.id })
+      .select("-lectureText -summaryText")
+      .sort({ createdAt: -1 });
+    res.json(summaries);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", error: err.message });
+  }
+};
+
+const getSummary = async (req, res) => {
+  try {
+    const summary = await Summary.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+    if (!summary) return res.status(404).json({ msg: "Summary not found" });
+    res.json(summary);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", error: err.message });
+  }
+};
+
+const deleteSummary = async (req, res) => {
+  try {
+    const summary = await Summary.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+    if (!summary) return res.status(404).json({ msg: "Summary not found" });
+    res.json({ msg: "Summary deleted" });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", error: err.message });
+  }
+};
+
 const updateAcademicYear = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -571,5 +770,13 @@ module.exports = {
   updateDepartment,
   changePassword,
   getAnnouncements,
+  generateAIPlan,
+  generateAIRoadmap,
+  forecastGPA,
+  predictGrade,
+  createSummary,
+  listSummaries,
+  getSummary,
+  deleteSummary,
   updateAcademicYear,
 };

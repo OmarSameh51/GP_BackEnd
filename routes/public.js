@@ -3,10 +3,12 @@ const router = express.Router();
 
 const {
   getActiveCourses,
+  searchCourses,
   getCourseByCode,
   getCourseRelations,
   getUnlockedCourses,
   getAcademicAdvice,
+  getAcademicRoadmap,
   getAnnouncements,
 } = require("../controllers/publicController");
 
@@ -25,6 +27,33 @@ const {
  *         description: Server error
  */
 router.get("/courses", getActiveCourses);
+
+/**
+ * @swagger
+ * /public/courses/search:
+ *   get:
+ *     summary: Search active courses by code or name (guest)
+ *     description: Public read-only endpoint. Returns active courses whose code or name contains the query string (case-insensitive). Used to power course-picker autocomplete UIs. No authentication required.
+ *     tags:
+ *       - Public
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "program"
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+ *         example: 20
+ *     responses:
+ *       200:
+ *         description: Matching courses retrieved successfully
+ *       500:
+ *         description: Server error
+ */
+router.get("/courses/search", searchCourses);
 
 /**
  * @swagger
@@ -158,6 +187,54 @@ router.get("/course/:courseCode/unlocks", getUnlockedCourses);
  *         description: Server error
  */
 router.post("/ai/advise", getAcademicAdvice);
+
+/**
+ * @swagger
+ * /public/ai/roadmap:
+ *   post:
+ *     summary: Get a semester-by-semester roadmap to graduation (guest)
+ *     description: Public endpoint. Accepts the same body as /public/ai/advise (department, academicYear, optional preferredDepartment, optional semester the plan starts from, passedCourses). The AI service simulates every remaining semester until the department's required hours are covered — prerequisites unlock term by term, semester offerings and credit caps are respected. Nothing is persisted.
+ *     tags:
+ *       - Public
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - department
+ *               - academicYear
+ *             properties:
+ *               department:
+ *                 type: string
+ *                 enum: [AI, CS, IT, IS, General]
+ *               academicYear:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *               preferredDepartment:
+ *                 type: string
+ *                 enum: [AI, CS, IT, IS, General]
+ *               semester:
+ *                 type: integer
+ *                 enum: [1, 2]
+ *               passedCourses:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     courseCode: { type: string }
+ *                     grade: { type: number }
+ *                     isPassed: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Roadmap generated
+ *       400:
+ *         description: Validation error
+ *       502:
+ *         description: AI advisor unavailable
+ */
+router.post("/ai/roadmap", getAcademicRoadmap);
 
 /**
  * @swagger
