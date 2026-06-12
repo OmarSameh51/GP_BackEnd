@@ -22,8 +22,13 @@ const connectNeo4j = async () => {
   }
 };
 
-process.on("SIGINT", async () => {
+// Close the shared driver. Only call this during process shutdown — closing the
+// driver without exiting leaves the pool permanently closed and every later
+// query throws "Pool is closed, it is no more able to serve requests".
+const closeNeo4j = async () => {
+  if (!isConnected) return;
   await driver.close();
-});
+  isConnected = false;
+};
 
-module.exports = { driver, connectNeo4j };
+module.exports = { driver, connectNeo4j, closeNeo4j };

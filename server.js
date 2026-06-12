@@ -5,8 +5,9 @@ const express = require("express");
 const cors = require("cors");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const mongoose = require("mongoose");
 const connectDB = require("./config/db");
-const { connectNeo4j } = require("./config/neo4j");
+const { connectNeo4j, closeNeo4j } = require("./config/neo4j");
 const adminRoutes = require("./routes/admin");
 const app = express();
 
@@ -84,9 +85,29 @@ if (require.main === module) {
   (async () => {
     await connectDB();
     await connectNeo4j();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+
+    // Graceful shutdown: stop accepting requests, close DB connections, then
+    // exit. Without the exit, a delivered SIGINT/SIGTERM would close the pools
+    // but leave the process serving requests against dead connections.
+    let shuttingDown = false;
+    const shutdown = async (signal) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      console.log(`\n${signal} received, shutting down...`);
+      server.close();
+      try {
+        await Promise.allSettled([closeNeo4j(), mongoose.connection.close()]);
+      } finally {
+        process.exit(0);
+      }
+    };
+
+    ["SIGINT", "SIGTERM"].forEach((signal) =>
+      process.on(signal, () => shutdown(signal)),
+    );
   })();
 }
 
