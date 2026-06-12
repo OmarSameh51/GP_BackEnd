@@ -515,7 +515,9 @@ const generateAIPlan = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: "User not found" });
     if (user.role !== "student") {
-      return res.status(403).json({ msg: "Only students can generate an AI plan" });
+      return res
+        .status(403)
+        .json({ msg: "Only students can generate an AI plan" });
     }
 
     const semesterRaw = req.body?.semester;
@@ -526,11 +528,13 @@ const generateAIPlan = async (req, res) => {
     });
 
     user.AI_plan = {
-      plan: (result.plan || []).map(({ courseCode, courseName, creditHours }) => ({
-        courseCode,
-        courseName,
-        creditHours,
-      })),
+      plan: (result.plan || []).map(
+        ({ courseCode, courseName, creditHours }) => ({
+          courseCode,
+          courseName,
+          creditHours,
+        }),
+      ),
     };
     await user.save();
 
@@ -550,7 +554,9 @@ const generateAIRoadmap = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: "User not found" });
     if (user.role !== "student") {
-      return res.status(403).json({ msg: "Only students can generate a roadmap" });
+      return res
+        .status(403)
+        .json({ msg: "Only students can generate a roadmap" });
     }
 
     const semesterRaw = req.body?.semester;
@@ -600,9 +606,12 @@ const predictGrade = async (req, res) => {
 
     if (
       [coursework, midterm, courseworkMax, midtermMax].some(Number.isNaN) ||
-      courseworkMax <= 0 || midtermMax <= 0 ||
-      coursework < 0 || coursework > courseworkMax ||
-      midterm < 0 || midterm > midtermMax
+      courseworkMax <= 0 ||
+      midtermMax <= 0 ||
+      coursework < 0 ||
+      coursework > courseworkMax ||
+      midterm < 0 ||
+      midterm > midtermMax
     ) {
       return res.status(400).json({
         msg: "coursework and midterm must be between 0 and their respective max marks",
@@ -673,7 +682,10 @@ const listSummaries = async (req, res) => {
 
 const getSummary = async (req, res) => {
   try {
-    const summary = await Summary.findOne({ _id: req.params.id, user: req.user.id });
+    const summary = await Summary.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
     if (!summary) return res.status(404).json({ msg: "Summary not found" });
     res.json(summary);
   } catch (err) {
@@ -683,7 +695,10 @@ const getSummary = async (req, res) => {
 
 const deleteSummary = async (req, res) => {
   try {
-    const summary = await Summary.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+    const summary = await Summary.findOneAndDelete({
+      _id: req.params.id,
+      user: req.user.id,
+    });
     if (!summary) return res.status(404).json({ msg: "Summary not found" });
     res.json({ msg: "Summary deleted" });
   } catch (err) {
@@ -691,6 +706,61 @@ const deleteSummary = async (req, res) => {
   }
 };
 
+const updateAcademicYear = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { academicYear } = req.body;
+
+    const allowedYears = [1, 2, 3, 4];
+
+    if (!academicYear) {
+      return res.status(400).json({
+        msg: "Academic year is required",
+      });
+    }
+
+    if (!allowedYears.includes(Number(academicYear))) {
+      return res.status(400).json({
+        msg: "Invalid academic year",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        msg: "User not found",
+      });
+    }
+
+    if (user.role !== "student") {
+      return res.status(403).json({
+        msg: "Only students can update academic year",
+      });
+    }
+
+    if (user.academicYear === Number(academicYear)) {
+      return res.status(400).json({
+        msg: "Academic year is already set to this value",
+      });
+    }
+
+    user.academicYear = Number(academicYear);
+
+    await user.save();
+    await updateStudentNeo4jStats(user);
+
+    res.json({
+      msg: "Academic year updated successfully",
+      academicYear: user.academicYear,
+    });
+  } catch (err) {
+    res.status(500).json({
+      msg: "Server error",
+      error: err.message,
+    });
+  }
+};
 module.exports = {
   getProfile,
   addCourse,
@@ -708,4 +778,5 @@ module.exports = {
   listSummaries,
   getSummary,
   deleteSummary,
+  updateAcademicYear,
 };

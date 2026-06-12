@@ -19,6 +19,7 @@ const {
   listSummaries,
   getSummary,
   deleteSummary,
+  updateAcademicYear,
 } = require("../controllers/userController");
 /**
  * @swagger
@@ -788,4 +789,56 @@ router.get("/summaries", protect, listSummaries);
 router.get("/summaries/:id", protect, getSummary);
 router.delete("/summaries/:id", protect, deleteSummary);
 
+/**
+ * @swagger
+ * /user/academic-year:
+ *   patch:
+ *     summary: Update student academic year
+ *     description: Allows a student to update their academic year. Only students can perform this action.
+ *     tags:
+ *       - User
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - academicYear
+ *             properties:
+ *               academicYear:
+ *                 type: integer
+ *                 enum: [1, 2, 3, 4]
+ *                 example: 2
+ *     responses:
+ *       200:
+ *         description: Academic year updated successfully
+ *       400:
+ *         description: Validation error — one of the following
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 msg:
+ *                   type: string
+ *             examples:
+ *               missingField:
+ *                 value: { msg: "Academic year is required" }
+ *               invalidYear:
+ *                 value: { msg: "Invalid academic year" }
+ *               sameYear:
+ *                 value: { msg: "Academic year is already set to this value" }
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Only students can update academic year
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/academic-year", protect, updateAcademicYear);
 module.exports = router;
